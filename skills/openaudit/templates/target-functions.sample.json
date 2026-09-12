@@ -1,0 +1,27 @@
+{
+  "_comment": "THE SCOPE GATE. Regenerate per target from kb/functions.csv - NEVER fuzz or analyze functions outside this list. Format follows recon-magic coverage-phase expectations.",
+  "targetFunctions": [
+    {
+      "contract": "ExampleTokenVault",
+      "file": "src/vault/ExampleTokenVault.sol",
+      "line": 42,
+      "function": "deposit(uint256)",
+      "stateChanging": true,
+      "propertyClasses": ["PROFIT", "ACCUM", "STATE_MACHINE"],
+      "notes": "share-math invariant guarded by ACCUM-01; ghost: feeVolume"
+    },
+    {
+      "contract": "ExampleTokenVault",
+      "file": "src/vault/ExampleTokenVault.sol",
+      "line": 88,
+      "function": "withdraw(uint256,address)",
+      "stateChanging": true,
+      "propertyClasses": ["PROFIT", "WTOK", "DOOMSDAY", "NEGATIVE"],
+      "notes": "weird-token actors from fuzzlib if target mock is thin; DOOMSDAY: drain-then-reenter"
+    }
+  ],
+  "exclude": [
+    {"pattern": "src/interfaces/**", "reason": "bounty out-of-scope"},
+    {"pattern": "**/Maverick*", "reason": "bounty out-of-scope example"}
+  ]
+}

@@ -1,0 +1,4 @@
+id,source_pipeline,severity_claim,file,function,one_line,poc_status,referee_verdict
+C-001,example: pashov,X-01,src/vault/ExampleVault.sol,withdraw(uint256),"generic example: underflow when amount > balance",none,PENDING
+C-002,example: quillai,Y-01,src/oracles/ExampleOracle.sol,getPrice(),"generic example: division by zero on drained pool",skeleton,via runes pending verify
+C-003,example: Category C violation,?,<file>,<fn>,"echidna violation: <prop> at depth N",skeleton,via runes pending verify,
