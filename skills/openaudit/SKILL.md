@@ -270,6 +270,11 @@ declaring code clean):
   its citation, for the Step 5.5 referee - silently deleting candidates is forbidden.
 - End reports with a ranked "Residual risks" list; never with "code looks fine".
 - When in doubt between two severities, report the higher one and note the uncertainty.
+- **Severity is a claim about the PROGRAM'S impact table, not a feeling.** Every finding MUST
+  carry: (a) the concrete attack path (numbered steps, including who the caller is), (b) which
+  impact class on the program's payout table it maps to (quote the program's wording), and
+  (c) the funds/value at risk in the protocol's own terms. A finding that moves funds and
+  lacks (a)-(c) is INCOMPLETE, not Low - the referee will return it.
 
 **Category C — Fuzzing executor** (Recon Magic + Chimera + Medusa + Echidna): an autonomous
 pipeline that builds property harnesses and grinds them. See
@@ -318,11 +323,26 @@ the finding agents) per finding batch whose only job is refutation:
    function lacking a row is re-queued to a fresh agent (this closes the skimming gap).
 5. Cross-category disagreement (AI says safe, fuzz violates, or vice versa) is ESCALATION not
     consensus: keep the higher severity as a LEAD until a PoC settles it.
+6. Cross-run dispute: if a candidate matches an archived run's candidate (same file:function,
+   in out/archive/ or a prior report), it inherits the HIGHER of the two severities pending
+   operator review - a new run may not silently downgrade what an old run graded higher.
 6. GATING RULE (validated 2026-09-11): a gate is NOT a blocker when it is a protocol-INTERNAL
     routine path - whitelisted liquidation contracts, keeper bots, distribution signers, factory
     deployers. Reaching the bug through normal operation is enough; only EXTERNAL attacker keys
     or governance multisigs count as blocking. Also reject "self-healing" claims unless a
     recovery path still exists in the current state.
+    - PATTERN A (not blocked): whitelisted keeper contract reverts on natural state; victims are
+      users (cf. dusty queue div/0 reverting the whole liquidation batch - the liquidator is the
+      VICTIM of its own routine tx, not an attacker).
+    - PATTERN B (blocked): requires an admin to sign malicious calldata, or leaked/compromised
+      keys the threat model excludes.
+    - AMBIGUITY UPGRADES, NEVER DOWNGRADES: when an exclusion reading is genuinely debatable
+      (e.g. whether a keeper bot counts as a "privileged address"), keep the ORIGINAL severity
+      and frame the exact question for triage. Never downgrade into ambiguity.
+7. SEVERITY: the referee assigns severity FRESH from the program's impact table, ignoring the
+    finding agent's label. A described impact that matches a named payable impact class cannot be
+    rated below it. If `out/{slug}/poc-results.md` exists, read its PoC table FIRST: a passing PoC
+    asserting the impact outranks any agent opinion on exploitability AND severity.
 
 For fuzz violations: convert with `runes` (Enigma-Dark) from Echidna/medusa reproducers to a
 Foundry PoC skeleton, then verify by hand - a converted reproducer is a STARTING point, not proof.
@@ -351,7 +371,10 @@ For each finding:
    - Use `assertEq` / `assertGt` to prove the exploit outcome (e.g. attacker balance increased)
    - Add a NatSpec `@notice` block at the top with:
      - **Proof statement**: one sentence of what the test proves
-     - **Attack steps**: numbered list of the exploit sequence
+     - **Trigger sequence**: numbered list of the steps producing the harmful state - marked as
+       ATTACKER-DRIVEN (an external actor executes them) or ROUTINE-OPERATION (users withdrawing,
+       keeper bots, signers rotating, batches liquidating). If the harm needs no attacker at all,
+       say so explicitly - "no attacker required" is a finding, not a downgrade.
      - **Expected outcome**: what success looks like
 
 2. **Add a run command block** in the finding's report section:
