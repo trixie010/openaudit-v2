@@ -323,19 +323,11 @@ the finding agents) per finding batch whose only job is refutation:
    function lacking a row is re-queued to a fresh agent (this closes the skimming gap).
 5. Cross-category disagreement (AI says safe, fuzz violates, or vice versa) is ESCALATION not
     consensus: keep the higher severity as a LEAD until a PoC settles it.
-6. Cross-run dispute: if a candidate matches an archived run's candidate (same file:function,
-   in out/archive/ or a prior report), it inherits the HIGHER of the two severities pending
-   operator review - a new run may not silently downgrade what an old run graded higher.
 6. GATING RULE (validated 2026-09-11): a gate is NOT a blocker when it is a protocol-INTERNAL
     routine path - whitelisted liquidation contracts, keeper bots, distribution signers, factory
     deployers. Reaching the bug through normal operation is enough; only EXTERNAL attacker keys
     or governance multisigs count as blocking. Also reject "self-healing" claims unless a
     recovery path still exists in the current state.
-    - PATTERN A (not blocked): whitelisted keeper contract reverts on natural state; victims are
-      users (cf. dusty queue div/0 reverting the whole liquidation batch - the liquidator is the
-      VICTIM of its own routine tx, not an attacker).
-    - PATTERN B (blocked): requires an admin to sign malicious calldata, or leaked/compromised
-      keys the threat model excludes.
     - AMBIGUITY UPGRADES, NEVER DOWNGRADES: when an exclusion reading is genuinely debatable
       (e.g. whether a keeper bot counts as a "privileged address"), keep the ORIGINAL severity
       and frame the exact question for triage. Never downgrade into ambiguity.
