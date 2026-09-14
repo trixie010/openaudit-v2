@@ -368,7 +368,11 @@ all gate-bypass rows, ...), passing the family's rows as the fan-out units - mir
 step output feeding the next depth - and have each agent emit per-row JSON objects:
 `{row_id, status: ANSWERED|REFUTED|UNANSWERED, finding: <canonical schema below>,
 refutation: {blocking_line, bypass_check: {attacker_satisfiable, routine_holder, harms_when_authorized}}}`.
-Tier S rows additionally get one agent per Category B pipeline (their angles differ).
+Tier S rows additionally get one agent per Category B pipeline (their angles differ; S rows ship
+`trigger=AGENT-ASSIGN` - the answering agent must set ATTACKER-DRIVEN/ROUTINE-OPERATION/BOTH).
+**Fan-out is context hygiene, not concurrency:** on RAM/API-limited hosts run these agents
+SEQUENTIALLY (one at a time) - the point is a small clean context per family, and each answering
+agent is registered in task-registry.json like any other subagent.
 
 The shared candidate queue uses the canonical finding schema (open-kritt `workflows.vulnerabilities`
 field set + our referee columns), see `templates/candidates.sample.csv`: id, source_pipeline,

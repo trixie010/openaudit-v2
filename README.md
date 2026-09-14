@@ -51,9 +51,12 @@ To run: open a session in this repo with the openaudit skill loaded and say
                                  role-gate refutations must clear the 3-part bypass sub-check);
                                  every prompt starts with run-context.md + untrusted-target rules;
                                  every agent resumable per subagent-protocol.md + task-registry.json
-5. STEP 5.5 REFEREE          -> fresh adversarial agent: re-litigates every drop (internal routine
-                                paths are NOT blockers), FP-1..7 patterns, verdicts
-                                CONFIRMED/BLOCKED/LEAD, coverage spot-checks
+5. STEP 5.5 REFEREE          -> composed ranker first (templates/impact-ranker.md + program
+                                 table + run rules); fresh adversarial agent: re-litigates every
+                                 drop (internal routine paths are NOT blockers; ROUTINE-OPERATION
+                                 rows have a severity floor), FP-1..7 patterns, kritt ledger audit
+                                 (zero UNANSWERED; bypass sub-check on gate refutations), verdicts
+                                 CONFIRMED/BLOCKED/LEAD, coverage spot-checks
 6. STEP 6 PoC                -> runnable Foundry tests for Medium+ findings
    6.5 EXPLOIT VERIFY        -> (all modes, High/Critical only) anvil-fork replay + balance-delta
                                 evidence via evmbench - minutes, NO fuzzing required
@@ -61,7 +64,8 @@ To run: open a session in this repo with the openaudit skill loaded and say
                                 repo (fuzz-night.yml, 6h medusa+echidna jobs, corpus committed back)
                                 or laptop+tmux; chimera-linter pre-flight; violations -> referee
 8. STEP 7 prior audits       -> docs + public reports, saved to out/{slug}/prior-audits/
-9. STEP 8 summary            -> dedup + out/{slug}/reports/openaudit-{slug}.md
+9. STEP 8 summary            -> dedup, ranker-ordered + KRITT ledger section (refuted questions
+                                 with citations) + out/{slug}/reports/openaudit-{slug}.md
 ```
 
 ### Method credits

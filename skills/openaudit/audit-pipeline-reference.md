@@ -30,6 +30,10 @@ Install with: `uv run solc-select install {version} && uv run solc-select use {v
 These are structured markdown prompts. The agent reads the skill file and follows
 the methodology step by step against the downloaded source code. **No external tools needed** —
 the agent performs the analysis using its own reasoning over the code.
+Every Category B agent additionally carries the KRITT ledger duty (SKILL Step 5): tier S rows
+answered per pipeline, tier M cleared once per mechanism family, role-gate refutations only via
+the 3-part bypass sub-check - and all output via the canonical finding schema + task-registry
+resumability (subagent-protocol.md).
 
 Each skill targets different vulnerability classes and uses different techniques.
 Running all of them provides defense-in-depth: what one misses, another catches.
@@ -220,7 +224,10 @@ shared `out/{protocol_slug}/candidates.csv`; violations become Foundry PoC skele
   fails); apply FP-PREVENTION patterns FP-1..FP-7 before accepting any dismissal; verdict every
   candidate CONFIRMED/BLOCKED/LEAD (LEADs become Category C properties); diff coverage matrices
   against kb/functions.csv and re-queue unaccounted functions; escalation rule: cross-category
-  disagreement keeps the higher severity until a PoC settles it.
+  disagreement keeps the higher severity until a PoC settles it. ALSO audits the kb/kritt.md
+  ledger (zero UNANSWERED rows; role-gate REFUTED rows need the 3-part bypass; any
+  ROUTINE-OPERATION row refuted on 'only privileged callers' = automatic overturn) and applies
+  the composed ranker when re-grading. Resume-safe via task-registry.json (subagent-protocol).
 
 ## Non-Solidity Pipelines (skip for EVM audits)
 
