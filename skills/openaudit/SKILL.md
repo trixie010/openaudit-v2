@@ -256,6 +256,13 @@ Only the Category C execution differs between modes.
 
 The skill repos are in `deps/`. There are three categories of pipelines:
 
+**SUBAGENT RESUMABILITY (mandatory)**: every spawned subagent follows
+[subagent-protocol.md](./subagent-protocol.md) - file-first checkpoints, resume-before-work,
+incremental appends, idempotent unit keys. The parent maintains `out/{slug}/task-registry.json`
+(`{id, task_id, status, checkpoint, ts}`) for every agent: API hiccup in-session = re-invoke the
+saved `task_id`; process death = fresh agent with the §2 resume directive. The ledger, corpus and
+candidates files are the state; conversations are disposable.
+
 **RUN CONTEXT (mandatory, all agent prompts)**: every agent prompt begins with the header from
 `templates/run-context.md` - repo, pinned commit, in-scope files, deps, workspace, KB paths.
 No agent "helpfully" analyzes adjacent code outside the scope block.

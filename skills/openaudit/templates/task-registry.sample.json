@@ -1,0 +1,13 @@
+{
+  "_comment": "Parent-maintained resumability registry (see skills/openaudit/subagent-protocol.md). One row per spawned agent. status: in_progress|done|failed|resumed. On new session or crash: agents with in_progress get re-spawned with the resume directive; their checkpoint file (report / ledger rows / candidates.csv) carries the state.",
+  "agents": [
+    {
+      "id": "example/kadenzipfel",
+      "task_id": "ses_xxx (valid only within the same opencode session)",
+      "status": "done",
+      "checkpoint": "rewarders/ queueNewRewards family - 41/58 rows answered",
+      "ts": "2026-09-14T00:00:00Z",
+      "artifacts": ["out/example/reports/kadenzipfel.md", "out/example/kb/kritt.md"]
+    }
+  ]
+}

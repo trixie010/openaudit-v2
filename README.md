@@ -9,7 +9,9 @@
 
 **Pipeline docs:** `skills/openaudit/SKILL.md` (canonical instructions) ·
 `audit-pipeline-reference.md` (pipelines 0–12 with commands) ·
-`fuzzing-pipeline.md` (Category C procedure) · `machine-recovery.md` (new-laptop restore) ·
+`fuzzing-pipeline.md` (Category C procedure) ·
+`subagent-protocol.md` (resumable agents: file checkpoints + task-registry.json) ·
+`machine-recovery.md` (new-laptop restore) ·
 `notes/plan-revision-2026-09-10.md` (decision log, local only)
 
 ### Modes — state the mode at session start, the agent follows it
@@ -47,7 +49,8 @@ To run: open a session in this repo with the openaudit skill loaded and say
                                  coverage matrix (every function in functions.csv) AND kritt
                                  ledger (tier M cleared once, tier S answered per pipeline;
                                  role-gate refutations must clear the 3-part bypass sub-check);
-                                 every prompt starts with run-context.md + untrusted-target rules
+                                 every prompt starts with run-context.md + untrusted-target rules;
+                                 every agent resumable per subagent-protocol.md + task-registry.json
 5. STEP 5.5 REFEREE          -> fresh adversarial agent: re-litigates every drop (internal routine
                                 paths are NOT blockers), FP-1..7 patterns, verdicts
                                 CONFIRMED/BLOCKED/LEAD, coverage spot-checks
