@@ -487,8 +487,9 @@ enrichment is missing has no promotion path.
 
 **GENERATOR: delegate to the user's `/vigilo_poc` skill when available** (opencode skill) - it is
 the canonical PoC procedure (findings -> Foundry test -> forge validation -> `test/poc/{id}.t.sol`
-inside the target project, which forge compiles natively - no symlink tricks needed). If
-vigilo_poc is not available, follow the inline format below. The requirements in this section
+inside the target project, which forge compiles natively - no symlink tricks needed). Its §6
+attempts the differential upgrade (`confirmed-differential`) per the evidence ladder above. If
+vigilo_poc is not available, follow the inline format below (and run §6 manually). The requirements in this section
 define what every PoC must PROVE and CARRY, regardless of which generator produced it.
 
 For each **Medium or higher** finding from Step 5, produce a self-contained Foundry test that

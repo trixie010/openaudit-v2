@@ -227,7 +227,10 @@ shared `out/{protocol_slug}/candidates.csv`; violations become Foundry PoC skele
   disagreement keeps the higher severity until a PoC settles it. ALSO audits the kb/kritt.md
   ledger (zero UNANSWERED rows; role-gate REFUTED rows need the 3-part bypass; any
   ROUTINE-OPERATION row refuted on 'only privileged callers' = automatic overturn) and applies
-  the composed ranker when re-grading. Resume-safe via task-registry.json (subagent-protocol).
+  the composed ranker when re-grading. Two sight-lines (SKILL 5.5): the ledger-grader SEES the
+  finder's citations; the §8 execution skeptic runs BLIND to the finder on `confirmed-*` rows,
+  upholding or marking `disputed` (ladder: suspected -> confirmed-executable ->
+  confirmed-differential -> reproduced). Resume-safe via task-registry.json (subagent-protocol).
 
 ## Non-Solidity Pipelines (skip for EVM audits)
 

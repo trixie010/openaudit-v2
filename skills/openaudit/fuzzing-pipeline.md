@@ -18,7 +18,9 @@ still written (they feed submissions directly), but harness work waits for bount
 
 - **Execution options (2026-09-11):** laptop + tmux works today; the PUBLIC fuzz-lab repo
   (github.com/trixie010/fuzz-lab, `fuzz-night.yml`) runs 6h campaigns on GitHub Actions with
-  unlimited minutes - preferred for nightly coverage; Oracle VPS deferred (signup pending a
+  unlimited minutes - preferred for nightly coverage once `targets/` holds a real campaign
+  (schedule stays disabled until then - an empty targets dir must not fail-email the operator);
+  Oracle VPS deferred (signup pending a
   working card). All three feed the same candidates.csv via the referee.
 - **Runtime prerequisites:** medusa 1.5.1 + echidna 2.3.3 as global binaries in `~/.local/bin`
   (release tarballs, not source builds). forge/cast present. No per-project install needed -
