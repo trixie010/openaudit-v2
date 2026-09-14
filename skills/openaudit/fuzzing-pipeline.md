@@ -112,9 +112,11 @@ against a LIVE local chain (anvil fork of mainnet state) and show funds actually
 - What it gives: detect/exploit/patch prompt modes; exploit mode = agent gets an Anvil chain
   (fork, chain ID 31337), funded exploit wallet, Foundry cast/forge + ethers; transactions are
   auto-captured from chain state (no manual txs.json); RPC filtered via a Veto proxy
-- Our flow: 1) referee CONFIRMED finding -> 2) build exploit tx sequence on anvil fork of the
-  actual deployed protocol state -> 3) capture before/after balances -> 4) attach the captured tx
-  list + balance deltas to the submission as exploit evidence
+- Our flow: 1) referee CONFIRMED finding (any `confirmed-*` ladder status) -> 2) build exploit tx
+  sequence on anvil fork of the actual deployed protocol state -> 3) capture before/after balances
+  -> 4) attach the captured tx list + balance deltas to the submission as exploit evidence,
+  flipping the finding's ladder `status` to `reproduced` and updating
+  `evidence_boundary`/`submission_advice` on its candidates row
 - License note: SolidityGuard is proprietary - the repo must stay out of openaudit's git tree and
   out of any public push. CLI usage of a local clone is the user's accepted risk.
 - Machine migration note: SolidityGuard is NOT part of the openaudit repo (proprietary). On a new

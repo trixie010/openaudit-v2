@@ -402,7 +402,13 @@ agent is registered in task-registry.json like any other subagent.
 The shared candidate queue uses the canonical finding schema (open-kritt `workflows.vulnerabilities`
 field set + our referee columns), see `templates/candidates.sample.csv`: id, source_pipeline,
 severity_claim, vulnerability_type, file, line, summary, malicious_actor, trigger_flow,
-malicious_input_example, exploitable, poc_status, referee_verdict.
+malicious_input_example, exploitable, status, tracking, dup_signature, program_minimum,
+evidence_boundary, submission_advice, dup_risk, poc_status, referee_verdict.
+**Verdict↔ladder mapping** (one vocabulary, not two): referee `CONFIRMED` = any `confirmed-*`
+ladder status (upgrade it - `executable` -> `differential` -> `reproduced` - as later stages
+complete); `LEAD` ~= `suspected`; `BLOCKED` = refuted/cleared only with the enforced receipts.
+`tracking` (open/triaging/submitted/ignored) stays independent of `status` - dismissing to
+`ignored` never rewrites execution evidence.
 
 Run 4 parallel agents max (fewer on low-RAM machines - one at a time if 4 freezes the host),
 and as many sequential batches as needed with these agents
