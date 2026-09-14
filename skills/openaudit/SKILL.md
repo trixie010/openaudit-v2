@@ -291,13 +291,17 @@ repos while holding real credentials, so):
   output (`cat`/`echo`/`rg`) can never mint a confirmed status, even citing a passing exit.
 - **Status ladder** (keep separate, never collapse into "bug"): `suspected` ->
   `confirmed-executable` (PoC passes citing a real runner) -> `confirmed-differential`
-  (STRONGEST short of reproduction: apply YOUR proposed one-line fix to a *copy*, rerun the
+  (STRONGEST short of reproduction: on a DISPOSABLE SECOND COPY - pristine workspace untouched
+  per baseline integrity - apply YOUR proposed one-line fix and rerun the
   same PoC - it must now fail while everything still compiles; tautological tests cannot pass
   this, and it pre-empts the "theoretical/no impact" invalid closure) -> `reproduced`
   (Step 6.5 anvil-fork of the real deployment).
-- **Fresh-context skeptic**: the Step 5.5 referee runs blind to the finder's reasoning chain;
-  where execution confirms but the skeptic disputes, mark `disputed` and keep it for human
-  review - never silently drop execution-backed evidence either.
+- **Two referee sight-lines, do not merge them**: the *ledger referee* (Step 5.5 §1-2) must SEE
+  the finder's drop-log citations - blind grading of stated reasons is impossible and pointless.
+  The *execution skeptic* (§8) runs in a FRESH context that never saw the finder's
+  investigation, on findings that already have a passing PoC. Where execution confirms but the
+  skeptic disputes, mark `disputed`, keep it for human review - never silently drop
+  execution-backed evidence.
 - **No comparison-based clearing**: "matches upstream", "same pattern as other adapters",
   "looks standard", "as designed" NEVER clears a question/row. Clear only by naming the
   enforcing line or producing a counterexample.
@@ -455,10 +459,16 @@ the finding agents) per finding batch whose only job is refutation:
     - AMBIGUITY UPGRADES, NEVER DOWNGRADES: when an exclusion reading is genuinely debatable
       (e.g. whether a keeper bot counts as a "privileged address"), keep the ORIGINAL severity
       and frame the exact question for triage. Never downgrade into ambiguity.
-7. SEVERITY: the referee assigns severity FRESH from the program's impact table, ignoring the
-    finding agent's label. A described impact that matches a named payable impact class cannot be
+7. SEVERITY + AXES: the referee assigns severity FRESH from the program's impact table,
+    ignoring the finding agent's label, and fills the four confirm axes (`program_minimum`,
+    `evidence_boundary`, `submission_advice`, `dup_risk`). A described impact that matches a named payable impact class cannot be
     rated below it. If `out/{slug}/poc-results.md` exists, read its PoC table FIRST: a passing PoC
     asserting the impact outranks any agent opinion on exploitability AND severity.
+
+8. EXECUTION SKEPTIC PASS (§8, after §7): for every finding at `confirmed-*`, run the
+   fresh-context skeptic from the evidence-discipline block (blind to the finder's chain),
+   record `upheld` or `disputed` + its reasoning as a finding artifact; `confirmed-differential`
+   + `upheld` = submission-grade bar; a disputed-but-execution-confirmed row stays with a flag.
 
 For fuzz violations: convert with `runes` (Enigma-Dark) from Echidna/medusa reproducers to a
 Foundry PoC skeleton, then verify by hand - a converted reproducer is a STARTING point, not proof.
@@ -545,7 +555,9 @@ Feed prior-audit material ONLY into the dup-risk axis and author-reply columns.
 - Read [how-to-find-existing-audit-reports.md](./how-to-find-existing-audit-reports.md) for tips on how to find existing audit reports for the same project and smart contract.
 - Save the reports, full files and web pages, in `out/{protocol_slug}/prior-audits/`
 - Run parallel agents to search and read through
-- We will use these to flag the issues that are false positives
+- Prior-audit material feeds the `dup_risk` / author-reply columns at CONFIRM/REPORT time only -
+  it never enters discovery prompts (blind-discovery rule above); "false positive" calls come
+  from evidence and refutation, not from reading someone else's known-issues list
 
 ### Step 8: Summarise findings
 
