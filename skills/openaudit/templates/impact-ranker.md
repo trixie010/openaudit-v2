@@ -21,3 +21,9 @@
 8. Ambiguity (e.g. is the keeper bot a "privileged address" for the exclusion?) does NOT
    downgrade - tie-break UP and write the exact question for triage.
 9. Within equal severity: rank by funds-at-risk, then by how many users/positions are affected.
+10. Blind-first ordering: findings judged on their own evidence; known-issue/duplicate
+    comparison happens ONLY at the confirm/report axes (dup_risk), never as a discovery input.
+11. `needs-coverage`/`shallow` health is not "clean": an incomplete ledger or pending scopes
+    outrank any Low/Info-only conclusion - the run must not be presented as a negative result.
+12. Evidence-boundary raises priority ties broken by: reproduced > confirmed-differential >
+    confirmed-executable > suspected, at equal impact class.

@@ -284,6 +284,31 @@ repos while holding real credentials, so):
 - Data egress: the target's source is sent to model providers by design - know the endpoint's
   retention terms before feeding it private/NDA code.
 
+**EVIDENCE DISCIPLINE** (methods informed by Flounder, adshao/flounder - no code copied):
+- **Baseline integrity**: a PoC/verify agent may only ADD files to the throwaway workspace -
+  never edit target source. A model that can weaken the target forges its own proof.
+- **Confirmation requires a real runner**: `forge test`/`hardhat test`/pytest - inspection
+  output (`cat`/`echo`/`rg`) can never mint a confirmed status, even citing a passing exit.
+- **Status ladder** (keep separate, never collapse into "bug"): `suspected` ->
+  `confirmed-executable` (PoC passes citing a real runner) -> `confirmed-differential`
+  (STRONGEST short of reproduction: apply YOUR proposed one-line fix to a *copy*, rerun the
+  same PoC - it must now fail while everything still compiles; tautological tests cannot pass
+  this, and it pre-empts the "theoretical/no impact" invalid closure) -> `reproduced`
+  (Step 6.5 anvil-fork of the real deployment).
+- **Fresh-context skeptic**: the Step 5.5 referee runs blind to the finder's reasoning chain;
+  where execution confirms but the skeptic disputes, mark `disputed` and keep it for human
+  review - never silently drop execution-backed evidence either.
+- **No comparison-based clearing**: "matches upstream", "same pattern as other adapters",
+  "looks standard", "as designed" NEVER clears a question/row. Clear only by naming the
+  enforcing line or producing a counterexample.
+- **Ignored, not deleted**: human-dismissed machine findings go to tracking state `ignored`
+  (recoverable, out of active worklists) - deleting evidence destroys the dup history you
+  need for next time.
+- **Run health**: every summary classifies the run itself: `healthy | needs-coverage |
+  shallow | blocked(resource)` - a zero-or-Low-only finding run with pending ledger rows is
+  `needs-coverage` (INCONCLUSIVE), NOT "the code is clean". The run-2 "all Low" result must
+  read as shallow/needs-coverage until the ledger proves otherwise.
+
 **Category A — Static analysis tools** (Slither, Aderyn, Semgrep, Wake detectors): These run
 external binaries on the source code and produce machine-readable output. Run them with:
 
@@ -508,6 +533,9 @@ Full procedure: [fuzzing-pipeline.md](./fuzzing-pipeline.md) "Exploit verificati
 
 ### Step 7: Search for existing audit reports
 
+**Discovery stays blind**: Step 7 runs at CONFIRM/REPORT time, NOT during Step 5 - agents
+that read known-issues early restate them (duplicates) and inherit their severity anchoring.
+Feed prior-audit material ONLY into the dup-risk axis and author-reply columns.
 - Read [how-to-find-existing-audit-reports.md](./how-to-find-existing-audit-reports.md) for tips on how to find existing audit reports for the same project and smart contract.
 - Save the reports, full files and web pages, in `out/{protocol_slug}/prior-audits/`
 - Run parallel agents to search and read through
@@ -538,7 +566,16 @@ Creete a section and a table called _Issues found_ for both deployment issues an
 
 - Deduplicate findings across tools
 - Write a table output with columns like skill repo used, severity, short name, description, source file, relevant addresses, is false positive,how team addresses the issue - add more columns if needed
-- Sort order: deployment issues first, then critical, high, medium. Then issues that have been marked as false positives as the last. Order WITHIN tiers by the composed ranker from Step 5 (house `templates/impact-ranker.md` + program table + run rules).
+- Sort order: deployment issues first, then critical, high, medium. Then issues that have been marked as false positives as the last.
+- Per-finding CONFIRM AXES (keep independent, do not blend): `program_minimum` (met|not-met|
+  unknown vs the payout table), `evidence_boundary` (reasoned | source | local-run | fork |
+  reproduced), `submission_advice`, and `dup_risk` (which known issues/archives it collides with,
+  incl. prior dup closures). "Eligible to submit" = program_minimum met + evidence >= the
+  program's bar; it never promises acceptance.
+- Include a _Run health_ line in the preface: healthy | needs-coverage | shallow | blocked,
+  with ledger stats (answered/refuted/unanswered rows, pending scopes).
+- `dup_signature` uses fix-equivalence where feasible: two candidates are the SAME bug when one
+  minimal fix neutralizes both (check on copies), not when titles look alike. Order WITHIN tiers by the composed ranker from Step 5 (house `templates/impact-ranker.md` + program table + run rules).
 - Include deployment and address specific issues in the table as the most important ones
 - For Medium+ findings, include the PoC test result: "Confirmed" (test passed), "Unconfirmed" (test reverted), or "No PoC" (not feasible). Link to the test file.
 - If we have existing audit reports and the issues were already addressed, add a column to "author reply" with a reference to the existing report where the issue was discussed and addressed.

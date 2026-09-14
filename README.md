@@ -63,9 +63,13 @@ To run: open a session in this repo with the openaudit skill loaded and say
 7. CATEGORY C fuzzing nights -> (--mode bounty/full only; NEVER in audit mode) public fuzz-lab
                                 repo (fuzz-night.yml, 6h medusa+echidna jobs, corpus committed back)
                                 or laptop+tmux; chimera-linter pre-flight; violations -> referee
-8. STEP 7 prior audits       -> docs + public reports, saved to out/{slug}/prior-audits/
-9. STEP 8 summary            -> dedup, ranker-ordered + KRITT ledger section (refuted questions
-                                 with citations) + out/{slug}/reports/openaudit-{slug}.md
+8. STEP 7 prior audits       -> CONFIRM-TIME ONLY (discovery stays blind): docs + public
+                                 reports saved to out/{slug}/prior-audits/; feed dup_risk axis
+9. STEP 8 summary            -> dedup (fix-equivalence where feasible), ranker-ordered, per-finding
+                                 confirm axes (program_minimum / evidence_boundary / submission
+                                 advice / dup_risk), status ladder (suspected->confirmed-executable
+                                 ->confirmed-differential->reproduced), run-health line + KRITT
+                                 ledger section -> out/{slug}/reports/openaudit-{slug}.md
 ```
 
 ### Method credits
