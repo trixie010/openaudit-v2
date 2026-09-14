@@ -320,12 +320,24 @@ Category B results and never gating them itself.
 **See [audit-pipeline-reference.md](./audit-pipeline-reference.md) for the complete list of
 pipelines with exact file paths, invocation steps, and what each one finds.**
 
-**Parallel-track scheduling**: AI pipelines run while the operator is present (they need many
-agent calls); the Category C fuzz grind runs unattended overnight (local CPU only once the
-harness is built). Both categories append to ONE shared candidate queue:
-`out/{protocol_slug}/candidates.csv` (columns: id, source_pipeline, severity_claim, file,
-function, one_line, poc_status, referee_verdict). Step 5.5 referee is the only thing that
-promotes a candidate out of the queue.
+**Ranker composition**: before Step 5.5 ranking, compose the impact ruleset exactly once per run:
+`templates/impact-ranker.md` (house rules) + the program's payout table quoted verbatim from
+SCOPE.md + any operator run-specific rules. The combined set may never be empty (open-kritt
+discipline, credit Blockian/Kritt-ai). The referee applies the combined ranker when re-grading
+severity; Step 8 ordering uses it.
+
+**Answering fan-out** (open-kritt depth-chaining, credit Blockian/Kritt-ai): do NOT hand one
+agent the whole ledger. Spawn one answering agent per MECHANISM FAMILY (all slot-writer rows,
+all gate-bypass rows, ...), passing the family's rows as the fan-out units - mirror of their
+step output feeding the next depth - and have each agent emit per-row JSON objects:
+`{row_id, status: ANSWERED|REFUTED|UNANSWERED, finding: <canonical schema below>,
+refutation: {blocking_line, bypass_check: {attacker_satisfiable, routine_holder, harms_when_authorized}}}`.
+Tier S rows additionally get one agent per Category B pipeline (their angles differ).
+
+The shared candidate queue uses the canonical finding schema (open-kritt `workflows.vulnerabilities`
+field set + our referee columns), see `templates/candidates.sample.csv`: id, source_pipeline,
+severity_claim, vulnerability_type, file, line, summary, malicious_actor, trigger_flow,
+malicious_input_example, exploitable, poc_status, referee_verdict.
 
 Run 4 parallel agents max (fewer on low-RAM machines - one at a time if 4 freezes the host),
 and as many sequential batches as needed with these agents
@@ -383,6 +395,14 @@ Foundry PoC skeleton, then verify by hand - a converted reproducer is a STARTING
 reproducers into Foundry tests manually - the referee gate applies either way.
 
 ### Step 6: Generate attack reproductions
+
+**Enrichment discipline** (open-kritt post-scripts model, credit Blockian/Kritt-ai): PoC and
+report artifacts are produced PER FINDING after ranking, as enrichment passes that may reference
+ONLY that finding's canonical-schema fields + repo context - never another finding's outputs
+(no cross-contamination between candidates). Each enrichment pass attaches its artifacts to the
+finding row: `_reserved_poc` = the PoC file + run command + result (via vigilo_poc/Step 6),
+`_reserved_report` = the submission-ready report (via `/vigilo_report`, Step 8). A finding whose
+enrichment is missing has no promotion path.
 
 **GENERATOR: delegate to the user's `/vigilo_poc` skill when available** (opencode skill) - it is
 the canonical PoC procedure (findings -> Foundry test -> forge validation -> `test/poc/{id}.t.sol`
@@ -478,7 +498,7 @@ Creete a section and a table called _Issues found_ for both deployment issues an
 
 - Deduplicate findings across tools
 - Write a table output with columns like skill repo used, severity, short name, description, source file, relevant addresses, is false positive,how team addresses the issue - add more columns if needed
-- Sort order: deployment issues first, then critical, high, medium. Then issues that have been marked as false positives as the last.
+- Sort order: deployment issues first, then critical, high, medium. Then issues that have been marked as false positives as the last. Order WITHIN tiers by the composed ranker from Step 5 (house `templates/impact-ranker.md` + program table + run rules).
 - Include deployment and address specific issues in the table as the most important ones
 - For Medium+ findings, include the PoC test result: "Confirmed" (test passed), "Unconfirmed" (test reverted), or "No PoC" (not feasible). Link to the test file.
 - If we have existing audit reports and the issues were already addressed, add a column to "author reply" with a reference to the existing report where the issue was discussed and addressed.

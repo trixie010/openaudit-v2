@@ -60,6 +60,16 @@ To run: open a session in this repo with the openaudit skill loaded and say
 9. STEP 8 summary            -> dedup + out/{slug}/reports/openaudit-{slug}.md
 ```
 
+### Method credits
+
+The question-ledger discipline, canonical finding schema (trigger_flow, malicious_actor,
+exploitable...), composed severity rankers, per-finding post-script enrichment, and the
+fan-out depth-chaining answering pattern are adapted from **open·kritt** (Kritt-ai/open-kritt,
+method by @ControlZ_1337 / @Blockian, AGPL-3.0 platform). openaudit v2 borrows the method and
+schema shapes only - no platform code, no Docker stack - so the pipeline runs on opencode plus
+your laptop/Actions budget. Their artifacts port cleanly back into open-kritt as prompts if you
+ever run it on a server.
+
 ### Validation status (2026-09-11)
 
 - ChainScope: installed + validated end-to-end on v2-core-pub (2138 nodes / 6162 edges / 100% confidence)
