@@ -211,6 +211,13 @@ AGENT-GENERATED (during the run, citing the mechanical artifacts):
     Every row must leave the run in state ANSWERED (finding + program-impact receipts) or
     REFUTED (blocking file:line + the 3-part gate-bypass sub-check where a role gate is involved).
     UNANSWERED rows block the run from finishing.
+    - TRIGGER TAG (script-assigned; agent sets it for S rows): ATTACKER-DRIVEN (an ungated
+      public/external fn is in play) | ROUTINE-OPERATION (every fn in the row is gate-guarded -
+      the legit holder can produce the state in normal operation) | BOTH.
+    - SEVERITY FLOOR for ROUTINE-OPERATION rows: they may NOT be refuted or downgraded with
+      "no attacker / only whitelisted callers can trigger it" - that framing is the exact hole
+      that sank P-01/P-03 in run 2; refutation is legal only via the 3-part bypass sub-check,
+      and a "legit holder does it normally" answer CONFIRMS the routine path, it does not excuse it.
 
 **Structural graph engine - ChainScope (deps/chainscope)**: after the manifest, index the target
 and query it instead of linear reading (it is a MAP, not a researcher - verdicts stay with you):
@@ -279,7 +286,8 @@ For each one, you the AI agent must:
    receipts) / REFUTED (exact blocking line; role-gate refutations must clear the 3-part
    bypass sub-check) - UNANSWERED is only legal across session boundaries, where a fresh agent
    re-queues it. Work the list in its given (mechanic-ordered) sequence; tier S rows get your
-   best attention, not the leftovers.
+   best attention, not the leftovers. ROUTINE-OPERATION rows: "only whitelisted callers can do
+   it" is NOT an answer - it CONFIRMS the routine trigger; the severity floor applies.
 
 These skills require NO external tools — you perform the analysis using your own reasoning
 over the code, guided by the methodology in each skill file.
@@ -351,7 +359,9 @@ the finding agents) per finding batch whose only job is refutation:
    answered every S row). A REFUTED row that leans on a role gate is rejected unless it shows
    the 3-part gate-bypass answer: attacker-satisfiable WITHOUT stolen keys? legit holder
    triggers it in NORMAL operation? harms users even when authorized? all three "no" with
-   citations, or the row re-opens as LEAD.
+   citations, or the row re-opens as LEAD. TRIGGER FLOOR: any row tagged ROUTINE-OPERATION
+   whose refutation says "only privileged callers" without a completed 3-part bypass answer is
+   automatically a referee OVERTURN.
 5. Cross-category disagreement (AI says safe, fuzz violates, or vice versa) is ESCALATION not
     consensus: keep the higher severity as a LEAD until a PoC settles it.
 6. GATING RULE (validated 2026-09-11): a gate is NOT a blocker when it is a protocol-INTERNAL
