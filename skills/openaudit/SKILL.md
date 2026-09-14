@@ -456,7 +456,7 @@ For each finding:
    `test/poc/{id}.t.sol` in the target project when generated via vigilo_poc)
    - Import the target contracts and any required interfaces
    - Set up a realistic scenario in `setUp()` (deploy or fork mainnet state)
-   - Write a single `test_` function that executes the attack steps
+   - Write a single `test_` function that executes the trigger steps (attacker-driven or routine-operation)
    - Use `assertEq` / `assertGt` to prove the exploit outcome (e.g. attacker balance increased)
    - Add a NatSpec `@notice` block at the top with:
      - **Proof statement**: one sentence of what the test proves

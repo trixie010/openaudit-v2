@@ -88,7 +88,10 @@ with `templates/target-functions.sample.json` and `templates/candidates.sample.c
 6. **Ingest next morning**: every violation -> convert to a Foundry PoC SKELETON - optionally via
    `runes` (Enigma-Dark/runes, small Go CLI, optional install) or manually - then verify by hand
    -> only then append to candidates.csv with poc_status=skeleton. The Step 5.5 referee owns
-   promotion from there.
+   promotion from there - and the composed ranker (`templates/impact-ranker.md` + program table)
+   applies to fuzz candidates exactly as to AI findings. Fuzz violations are also tier-S
+   answers: a kritt.md row flipped to ANSWERED citing a violation is the strongest evidence kind
+   the ledger knows.
 7. **LEAD promotion loop**: referee verdict LEAD = write the violated property from the lead and
    add it to the harness. Category B leads feed Category C; Category C violations feed the referee.
    The loop, not either half, is the product.
