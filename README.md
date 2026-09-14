@@ -46,7 +46,8 @@ To run: open a session in this repo with the openaudit skill loaded and say
                                  archethect - ONE agent at a time; anti-bias rules; drop-log;
                                  coverage matrix (every function in functions.csv) AND kritt
                                  ledger (tier M cleared once, tier S answered per pipeline;
-                                 role-gate refutations must clear the 3-part bypass sub-check)
+                                 role-gate refutations must clear the 3-part bypass sub-check);
+                                 every prompt starts with run-context.md + untrusted-target rules
 5. STEP 5.5 REFEREE          -> fresh adversarial agent: re-litigates every drop (internal routine
                                 paths are NOT blockers), FP-1..7 patterns, verdicts
                                 CONFIRMED/BLOCKED/LEAD, coverage spot-checks
@@ -64,7 +65,8 @@ To run: open a session in this repo with the openaudit skill loaded and say
 
 The question-ledger discipline, canonical finding schema (trigger_flow, malicious_actor,
 exploitable...), composed severity rankers, per-finding post-script enrichment, and the
-fan-out depth-chaining answering pattern are adapted from **open·kritt** (Kritt-ai/open-kritt,
+fan-out depth-chaining answering, run-context blocks, untrusted-target threat rules, and the anti-fabrication
+prompt discipline are adapted from **open·kritt** (Kritt-ai/open-kritt,
 method by @ControlZ_1337 / @Blockian, AGPL-3.0 platform). openaudit v2 borrows the method and
 schema shapes only - no platform code, no Docker stack - so the pipeline runs on opencode plus
 your laptop/Actions budget. Their artifacts port cleanly back into open-kritt as prompts if you
