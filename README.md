@@ -30,18 +30,23 @@ To run: open a session in this repo with the openaudit skill loaded and say
 ```
 0. SETUP (once per machine)  -> skills/openaudit/machine-recovery.md
 1. SCOPE                     -> out/{slug}/SCOPE.md + in-scope-files.txt from bounty/contest rules
-2. STAGE 0.5 KNOWLEDGE BASE  -> out/{slug}/kb/ - NINE artifacts:
+2. STAGE 0.5 KNOWLEDGE BASE  -> out/{slug}/kb/ - TEN artifacts:
    MECHANICAL (tools):       functions.csv (slither canonical manifest) |
                              graph-functions.csv + chainscope.db (ChainScope graph) |
                              slither-manifest.json | dependency-map.md | reconciliation.md
-   AGENT-GENERATED:          function-docs.md | access-control.md | invariants.md
+   AGENT-GENERATED:          function-docs.md | access-control.md | invariants.md | kritt.md
    Chainscope and slither are used TOGETHER: slither = compiler truth (canonical manifest +
    detectors); chainscope = queryable structural map (paths, trust boundaries, hotspots,
-   provenance). reconciliation.md diffs them - no function stays invisible.
+   provenance). reconciliation.md diffs them - no function stays invisible. kritt.md = KRITT
+   question ledger, two tiers via templates/kb_kritt.py: M = mechanical family rows from the
+   graphs (floor, not cap; pre-triaged), S = semantic questions from invariants.md where
+   Highs live. Completion gate: zero UNANSWERED rows.
 3. CATEGORY A static         -> slither detectors + semgrep + wake (uvx) [+ aderyn]
 4. CATEGORY B AI pipelines   -> pashov, kadenzipfel, forefy, quillai, auditmos, trailofbits,
-                                archethect - ONE agent at a time; anti-bias rules; drop-log;
-                                coverage matrix (every function in functions.csv)
+                                 archethect - ONE agent at a time; anti-bias rules; drop-log;
+                                 coverage matrix (every function in functions.csv) AND kritt
+                                 ledger (tier M cleared once, tier S answered per pipeline;
+                                 role-gate refutations must clear the 3-part bypass sub-check)
 5. STEP 5.5 REFEREE          -> fresh adversarial agent: re-litigates every drop (internal routine
                                 paths are NOT blockers), FP-1..7 patterns, verdicts
                                 CONFIRMED/BLOCKED/LEAD, coverage spot-checks

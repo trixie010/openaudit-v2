@@ -48,15 +48,22 @@ shared `out/{protocol_slug}/candidates.csv`; violations become Foundry PoC skele
 ### Pipeline 0: Knowledge Base (Stage 0.5 - runs BEFORE all others)
 - **Repo**: built-in stage; graph layer from deps/chainscope, manifest from slither Python API
 - **Type**: prerequisite for Categories B and C
-- **What it produces** (9 artifacts, out/{slug}/kb/): MECHANICAL: functions.csv (canonical,
+- **What it produces** (10 artifacts, out/{slug}/kb/): MECHANICAL: functions.csv (canonical,
   compiler-grounded manifest), graph-functions.csv (parser layer), chainscope.db (queryable
   graph), slither-manifest.json (raw slither run; detectors also feed Category A),
   dependency-map.md (per-function reads/writes/calls from the graph), reconciliation.md
   (compiler-vs-parser diff; parser gaps flagged). AGENT-GENERATED: function-docs.md,
   access-control.md (role matrix), invariants.md (properties tagged with recon-magic classes:
-  PROFIT/CANARY/WTOK/ACCUM/STATE_MACHINE/FEE_VOL/DOOMSDAY/NEGATIVE)
+  PROFIT/CANARY/WTOK/ACCUM/STATE_MACHINE/FEE_VOL/DOOMSDAY/NEGATIVE), kritt.md (KRITT question
+  ledger, two tiers via templates/kb_kritt.py: TIER M mechanical family-aggregated rows from the
+  graphs - slot-writer, external-call, sink, gate-bypass, parser-gap, floor-not-cap; TIER S
+  semantic rows from invariants.md - graph-invisible, per-pipeline, where Highs live. 30+ is a
+  FLOOR; the run is not done while rows stay UNANSWERED; role-gate refutations require the
+  3-part bypass sub-check)
 - **Why**: anti-skimming. Every later agent cites KB entries instead of re-reading raw code, and
-  every report must end with a per-function coverage matrix checked against functions.csv.
+  every report must end with BOTH a per-function coverage matrix checked against functions.csv AND
+  a kritt question ledger where every question is ANSWERED / REFUTED (with blocking line) /
+  UNANSWERED (re-queued) - completion is gated on the ledger, not on "feeling done".
 - **Structural graph layer - ChainScope** (`deps/chainscope`): `cs_profile.py {src} --strategy
   bounty --json`, then cs_paths/cs_sinks/cs_state/cs_trace/cs_cross/cs_summary answer: riskiest
   functions, who writes balance slots, deposit->delegatecall paths, trust-boundary crossings,
