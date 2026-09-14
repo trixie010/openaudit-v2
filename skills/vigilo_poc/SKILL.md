@@ -107,7 +107,7 @@ forge test --match-test "test_Exploit_{ID}" -vvv
 
 | Result | Meaning | Action |
 |--------|---------|--------|
-| PASS + Impact proven | Vulnerability valid | → Complete |
+| PASS + Impact proven | Vulnerability valid | → Attempt §6 differential (submission-grade bar) |
 | PASS + Impact unclear | Insufficient verification | → Strengthen assertions |
 | FAIL | Issue occurred | → Fix PoC (max 3 attempts) |
 
@@ -150,6 +150,28 @@ test/poc/H-01-donation-attack.t.sol            # PoC code (project root)
 **Naming Convention**: `{Severity}-{id}-{kebab-case-title}`
 - Same format across all three file types
 - Makes it easy to track: scenario → PoC code → validation log
+
+### 6. Differential Verification (confirmed-differential)
+
+A passing PoC proves the test passes. Prove it proves the BUG by showing your own fix kills it:
+
+1. **Author a minimal `fix_patch`** - usually ONE line in the vulnerable function (check added,
+   ordering moved, rounding clamped). Record it as `{path, old, new}` in the validation log.
+2. **Disposable copy only**: `cp -r <project> /tmp/poc-diff-<id>`, apply the patch to the COPY,
+   `forge build` there, rerun the SAME PoC file against it.
+3. **The differential bar** - all three must hold, else the test is tautological and stays
+   `confirmed-executable` at best:
+   - baseline run: PoC PASSES (exploit reproduces)
+   - patched run: build still succeeds (fix is not "break the contract")
+   - patched run: PoC FAILS / exploit blocked
+4. **Record both command outcomes** (commands + result lines) in the validation log and set the
+   finding's ladder status: `suspected` -> `confirmed-executable` (PoC passes) ->
+   `confirmed-differential` (this section) -> `reproduced` (live anvil fork, openaudit Step 6.5).
+5. Never edit the real workspace or commit the patch anywhere - the fix exists to test the
+   evidence, not to propose a PR.
+
+**Why bother:** triage closes "theoretical" reports far less when the PoC itself demonstrates
+that a one-line guard neutralizes the exploit - it pre-answers the exact objection.
 
 ---
 
