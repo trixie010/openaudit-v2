@@ -129,6 +129,26 @@ against a LIVE local chain (anvil fork of mainnet state) and show funds actually
 - Laptop cost: anvil fork is cheap (~1GB); exploit runs are seconds. This stage does NOT need the
   night shift.
 
+## Refutation-falsification campaigns (fuzzing the agents' "NO")
+
+`templates/gen_refutation_campaign.py --workspace out/{slug}` turns the pipeline's own rejections
+into a prioritized fuzz queue (tiers: 1 role-gate REFUTED rows, 2 mechanical REFUTED rows,
+3 LEAD/BLOCKED candidates), gated by in-scope-files.txt (NOT functions.csv - derived, can be
+stale) and emitting private/queue.json + private/handler-plan.md (full provenance, NEVER
+published) and public/campaign.md (class-level only, NO function names - the list itself would
+be a target map for an unpatched program).
+
+Rules:
+- Actors impersonate ROUTINE holders only (prank keeper/signer/autopool doing normal duties) -
+  this matches the Step 5.5 gating rule and the SCOPE privilege exclusion; it does NOT test
+  leaked-key paths.
+- Core invariant per handler sequence: aggregate user value unchanged + exit paths functional +
+  no panics (reuse the existing props contracts' panic-trap pattern).
+- Any broken property is a LEAD until the fresh-context skeptic reproduces it; before ANY
+  submission, diff its mechanism against prior findings + dup closures (dedup gate).
+- On this class of campaign the leak guard (.no-violation-commit) is mandatory while the
+  program's submissions are unresolved.
+
 ## Budget guards (free-tier reality)
 
 - ONE workflow per session; prefer *-short variants; set max loops/decisions where configurable
