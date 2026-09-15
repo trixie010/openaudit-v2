@@ -187,7 +187,13 @@ MECHANICAL:
 GENERATION: items 1 via `templates/kb_slither_functions.py` (run inside the target project);
 items 2, 5, 6 via `templates/kb_from_chainscope_db.py` (run anywhere, needs only item 3;
 reconciliation additionally needs item 1); item 10 TIER M + TIER S seed via
-`templates/kb_kritt.py` (needs items 1, 3, 6, and 9 if present). Do not regenerate these by LLM
+`templates/kb_kritt.py` (needs items 1, 3, 6, and 9 if present).
+ALL THREE take `--in-scope-file out/{slug}/in-scope-files.txt` (SCOPE.md authority): inventory
+artifacts gain an `in_scope` column (context kept - never purge it, cross-boundary evidence is
+how findings like in-scope-code-strands-into-excluded-module get caught), while every QUEUE
+(kritt rows, coverage duties, fuzz target list) is built from `in_scope=true` only. The referee
+auto-stamps any residual out-of-scope row REFUTED with the SCOPE.md line - agents never burn
+effort or budget on excluded files. Do not regenerate these by LLM
 memory - the scripts are deterministic and their output is the anti-skim ground truth.
 ANSWERING RULE: tier M is cleared ONCE (first answering agent updates kritt.md in place; other
 pipelines read it, they don't re-answer). Tier S is answered PER PIPELINE, because the clever
@@ -439,8 +445,11 @@ the finding agents) per finding batch whose only job is refutation:
    feeds Category C).
 3. Apply the FP-prevention checklist (recon-magic pattern library FP-1..FP-7, e.g. role-rotation
    history tracking, residual-fee-share guards) before accepting any "not exploitable because X" argument.
-4. Coverage audit: diff each pipeline's coverage matrix against kb/functions.csv; any manifest
-   function lacking a row is re-queued to a fresh agent (this closes the skimming gap). ALSO
+4. Coverage audit: diff each pipeline's coverage matrix against kb/functions.csv **rows where
+   in_scope=true** (out-of-scope functions are context, never duties); any in-scope manifest
+   function lacking a row is re-queued to a fresh agent (this closes the skimming gap).
+   Any ledger/inventory row that still names an out-of-scope file is auto-stamped
+   `REFUTED - SCOPE.md (<line>) file out of program scope` before counting. ALSO
    audit the kb/kritt.md ledger: ZERO rows may remain UNANSWERED at promotion (tier M resolved
    once - verify each has ANSWERED/REFUTED; tier S resolved per pipeline - verify each pipeline
    answered every S row). A REFUTED row that leans on a role gate is rejected unless it shows

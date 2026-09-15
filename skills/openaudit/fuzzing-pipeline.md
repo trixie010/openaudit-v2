@@ -65,7 +65,7 @@ with `templates/target-functions.sample.json` and `templates/candidates.sample.c
 
 ## Procedure (day: thinking; night: grinding)
 
-1. **Scope gate first**: write `target-functions.json` from kb/functions.csv - the in-scope
+1. **Scope gate first**: write `target-functions.json` from kb/functions.csv rows with `in_scope=true` (generator consumed in-scope-files.txt) - the in-scope
    state-changing functions only. Recon-magic coverage/properties phases are instructed to touch
    NOTHING outside this list (their own enforcement: "Only analyze functions explicitly listed").
 2. **KB feed**: hand recon-magic the out/{slug}/kb/dependency-map.md + invariants.md. Its

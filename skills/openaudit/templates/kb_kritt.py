@@ -32,8 +32,15 @@ def main():
     ap.add_argument("--reconciliation", default=None)
     ap.add_argument("--invariants", default=None)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--in-scope-file", help="in-scope-files.txt: only in-scope families become QUEUE rows")
     a = ap.parse_args()
 
+    scope = None
+    if a.in_scope_file:
+        scope = {l.strip().lstrip("./") for l in open(a.in_scope_file) if l.strip() and not l.startswith("#")}
+    def in_scope(path):
+        return scope is None or bool(path) and any(path == s or path.startswith(s + "/") or s.startswith(path) for s in scope)
+    fn_file = {}
     db = sqlite3.connect(a.db)
     nodes = {}
     for nid, label, typ, vis, f, ls in db.execute(
@@ -61,6 +68,8 @@ def main():
         if n["type"] == "function":
             fn_by_short.setdefault(n["label"].split(".")[-1], nid)
     canon_mods = {r["function"]: (r.get("modifiers") or "").lower() for r in canons}
+    for r in canons:
+        fn_file[r["function"].split(".")[-1]] = r.get("file", "")
 
     def is_guarded(fnspec):
         m = canon_mods.get(fnspec, "")
@@ -118,10 +127,18 @@ def main():
             if m:
                 fam[("parser-gap", "kb/reconciliation.md")].append(([m.group(1)], ""))
 
-    # ---- emit ledger rows ----
-    rows = []
+    # ---- emit ledger rows (queues = in-scope families only) ----
+    rows, oos = [], []
+    def fam_in_scope(mech, group, allfns):
+        if scope is None:
+            return True
+        cand = [group.split("::")[0], group.split(" ")[0]]
+        cand += [fn_file.get(f.split(".")[-1], "") for f in allfns]
+        return any(in_scope(p) for p in cand if p)
     for (mech, group), members in sorted(fam.items()):
         allfns = sorted({f for ms, _ in members for f in ms})
+        if not fam_in_scope(mech, group, allfns):
+            oos.append((mech, group)); continue
         ev = "; ".join({e for _, e in members if e})[:160] or group
         n = len(allfns)
         listed = ", ".join(allfns[:SAMPLE_CAP]) + (f" +{n - SAMPLE_CAP} more" if n > SAMPLE_CAP else "")
@@ -189,7 +206,11 @@ def main():
             f.write(f"| {tier}{i:03d} | {tier} | {mech} | {trig} | {grp} | {q} | {ev} | "
                     f"UNANSWERED | - |\n")
     mc = sum(1 for r in rows if r[0] == "M"); sc = sum(1 for r in rows if r[0] == "S")
-    print(f"kritt.md: {mc} mechanical family-rows + {sc} semantic rows -> {a.out}")
+    with open(a.out, "a") as f:
+        if oos:
+            f.write(f"\n<!-- SCOPE: {len(oos)} out-of-scope families excluded from the queue "
+                    "by in-scope-files.txt (evidence may still cite them). Do not answer. -->\n")
+    print(f"kritt.md: {mc} in-scope M + {sc} S rows; {len(oos)} out-of-scope families excluded")
 
 if __name__ == "__main__":
     main()

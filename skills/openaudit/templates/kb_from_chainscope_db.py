@@ -25,8 +25,13 @@ def main() -> None:
     p.add_argument("--db", required=True, help="path to chainscope.db")
     p.add_argument("--out", required=True, help="KB output directory")
     p.add_argument("--functions-csv", help="canonical functions.csv (enables reconciliation)")
+    p.add_argument("--in-scope-file", help="in-scope-files.txt; adds in_scope column (queues filter on it)")
     args = p.parse_args()
     os.makedirs(args.out, exist_ok=True)
+    scope = None
+    if args.in_scope_file:
+        scope = {l.strip().lstrip("./") for l in open(args.in_scope_file) if l.strip() and not l.startswith("#")}
+    def insc(file): return "true" if scope is None or (file in scope) else "false"
     db = sqlite3.connect(args.db)
 
     # 1) graph-functions.csv
@@ -34,10 +39,12 @@ def main() -> None:
         "select label, file, line_start, visibility from nodes where type='function' order by file, line_start"
     ).fetchall()
     with open(os.path.join(args.out, "graph-functions.csv"), "w") as f:
-        f.write("function,file,line,visibility\n")
+        f.write("function,file,line,visibility,in_scope\n")
+        nin = 0
         for r in rows:
-            f.write(",".join(str(x).replace(",", ";") for x in r) + "\n")
-    print(f"graph-functions.csv: {len(rows)} functions")
+            v = insc(r[1]); nin += v == "true"
+            f.write(",".join(str(x).replace(",", ";") for x in r) + "," + v + "\n")
+    print(f"graph-functions.csv: {len(rows)} functions ({nin} in-scope)")
 
     # 2) dependency-map.md
     nodes = dict(db.execute("select id,label from nodes").fetchall())

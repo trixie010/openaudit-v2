@@ -19,8 +19,12 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--src", default=".", help="target project root (default: cwd)")
     p.add_argument("--out", required=True, help="path to functions.csv")
+    p.add_argument("--in-scope-file", help="in-scope-files.txt (SCOPE.md authority); adds in_scope column")
     args = p.parse_args()
 
+    scope = None
+    if args.in_scope_file:
+        scope = {l.strip().lstrip("./") for l in open(args.in_scope_file) if l.strip() and not l.startswith("#")}
     sl = Slither(args.src)
     rows = set()
     for c in sl.contracts:
@@ -34,13 +38,15 @@ def main() -> None:
                 except Exception:
                     file, line = "?", 0
                 mods = ",".join(m.name for m in f.modifiers)
-                rows.add((f"{c.name}.{f.name}", file, line, f.visibility, mods))
+                insc = "true" if (scope is None or (file and (file in scope or any(f0==file for f0 in scope)))) else "false"
+                rows.add((f"{c.name}.{f.name}", file, line, f.visibility, mods, insc))
 
     with open(args.out, "w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["function", "file", "line", "visibility", "modifiers"])
+        w.writerow(["function", "file", "line", "visibility", "modifiers", "in_scope"])
         w.writerows(sorted(rows))
-    print(f"functions.csv written: {len(rows)} state-changing functions")
+    n = sum(1 for r in rows if r[5] == "true")
+    print(f"functions.csv: {len(rows)} functions ({n} in-scope, {len(rows)-n} context/excluded)")
 
 
 if __name__ == "__main__":
