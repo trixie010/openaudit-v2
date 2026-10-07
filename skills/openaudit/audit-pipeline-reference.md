@@ -95,21 +95,42 @@ shared `out/{protocol_slug}/candidates.csv`; violations become Foundry PoC skele
 - **Run**: `uv run semgrep --metrics=off --config "r/solidity" --json {src_dir}/ > {output_dir}/semgrep-results.json`
 - **Important**: Always use `--metrics=off` to prevent telemetry
 
-### Pipeline 4: Pashov Solidity Auditor (AI methodology)
+### Pipeline 4: Pashov Solidity Auditor (AI methodology, v4.1)
 - **Repo**: `deps/pashov-skills/`
 - **Type**: Category B — AI-driven methodology
-- **What it finds**: Business logic bugs, attack vectors across 4 categories
+- **What it finds**: Business logic bugs, attack vectors across 12 specialist agent lenses
 - **Skill file**: `deps/pashov-skills/solidity-auditor/SKILL.md`
 - **How to run**:
-  1. Read `deps/pashov-skills/solidity-auditor/SKILL.md` completely
-  2. The skill instructs spawning 4 parallel scanning agents, each with different attack vector files
-  3. If parallel agents are not available, run sequentially: for each of the 4 attack vector files at
-     `deps/pashov-skills/solidity-auditor/references/attack-vectors/attack-vectors-{1,2,3,4}.md`,
-     read the attack vectors, then systematically check every in-scope .sol file for those patterns
-  4. Use `deps/pashov-skills/solidity-auditor/references/judging.md` for severity classification
-  5. Merge and deduplicate findings
-- **In-scope files**: All `.sol` files EXCEPT interfaces/, lib/, mocks/, test/ directories
-- **Output**: Write to `{output_dir}/pashov-skills.md`
+  1. Read `deps/pashov-skills/solidity-auditor/SKILL.md` completely (462 lines; it is an
+     orchestrator contract, not a checklist)
+  2. Discover in-scope files with the exact `find` command the skill mandates — use Bash `find`,
+     with `-type f` (Hardhat writes build artifacts into directories named `Contract.sol/`)
+  3. Discover the agent roster from `deps/pashov-skills/solidity-auditor/references/hacking-agents/`
+     — 12 specialist agents (`access-control`, `asymmetry`, `boundary`, `economic-security`,
+     `execution-trace`, `first-principles`, `flow-gap`, `invariant`, `math-precision`,
+     `numerical-gap`, `periphery`, `trust-gap`) plus `shared-rules.md`
+  4. Read the shared prep set in one batch: `references/agent-prompts.md`, `references/judging.md`
+     (confidence threshold `75`), `references/report-formatting.md`, `references/report-language.md`
+  5. Spawn the 12 agents in parallel, one agent per hacking-agents file, each armed with
+     `shared-rules.md`. If parallel agents are unavailable, run them sequentially per file
+  6. For loop mode (`--loop [N]`, default 3): each pass is told what earlier passes found; runs
+     write `run-{n}.md` markers, dedupe + gate-evaluate per pass (`references/dedup-and-assembly.md`)
+  7. **The report is assembled by shell, not by the model.** Turn 5 runs
+     `deps/pashov-skills/solidity-auditor/references/assemble.sh --dir .solidity-auditor/runs/{stamp}`
+     which writes `{dir}/full-report.md`. Do NOT compose or reword a report yourself — the
+     assembler is the only report producer and its structure check surfaces unreadable blocks
+  8. Read the assembled `full-report.md` and summarise it into `{output_dir}/pashov-skills.md`,
+     preserving the assembler's confidence scores, `seen in k/N runs`, and `NEW`/`KNOWN` memory tags
+- **In-scope files**: All `.sol` files EXCEPT dependency/build dirs (`node_modules/`, `lib/`,
+  `artifacts/`, `cache/`, `out/`, `broadcast/`, `coverage/`, `typechain*/`) and non-production
+  (`interfaces/`, `mocks/`, `test/`, `*.t.sol`, `*Test*.sol`, `*Mock*.sol`). **Deploy scripts
+  stay in scope** (`script/`, `deploy/`, `*.s.sol`) — they set constructor args and hand over
+  ownership, so they carry real bugs. An explicitly named file on the command line is always
+  scanned regardless of the exclude pattern
+- **Output**: Assembled at `.solidity-auditor/runs/{stamp}/full-report.md`; summarised to `{output_dir}/pashov-skills.md`
+- **Note**: v4 replaced the old `references/attack-vectors/attack-vectors-{1,2,3,4}.md` scheme
+  with the 12 `hacking-agents/` files and dropped the mandatory marker protocol in favour of
+  shell assembly. Follow the current `SKILL.md`, not earlier descriptions of 4 attack-vector files
 
 ### Pipeline 5: SCV-Scan / kadenzipfel (AI methodology)
 - **Repo**: `deps/kadenzipfel-scv-scan/`
@@ -130,14 +151,14 @@ shared `out/{protocol_slug}/candidates.csv`; violations become Foundry PoC skele
 - **Repo**: `deps/forefy-context/`
 - **Type**: Category B — AI-driven methodology
 - **What it finds**: Protocol-specific vulnerabilities, cross-contract issues, economic attacks
-- **Skill file**: `deps/forefy-context/skills/smart-contract-audit/SKILL.md`
+- **Skill file**: `deps/forefy-context/skills/blockchain/smart-contract-audit/SKILL.md`
 - **How to run**:
-  1. Read `deps/forefy-context/skills/smart-contract-audit/SKILL.md`
+  1. Read `deps/forefy-context/skills/blockchain/smart-contract-audit/SKILL.md`
   2. Detect protocol type (DEX, lending, pool, governance, etc.)
-  3. Read language-specific checks from `deps/forefy-context/prompts/SOLIDITY-CHECKS.md`
-  4. Read vulnerability patterns from `deps/forefy-context/skills/smart-contract-audit/reference/solidity/`
+  3. Read language-specific checks from `deps/forefy-context/skills/blockchain/smart-contract-audit/solidity-checks.md`
+  4. Read vulnerability patterns from `deps/forefy-context/skills/blockchain/smart-contract-audit/reference/solidity/`
   5. Follow the 5 audit layers: protocol → economic → access control → integration → technical
-  6. Apply the multi-expert framework from `deps/forefy-context/prompts/MULTI-EXPERT.md`
+  6. Apply the multi-expert framework from `deps/forefy-context/skills/blockchain/smart-contract-audit/multi-expert.md`
 - **Output**: Write to `{output_dir}/forefy-context.md`
 
 ### Pipeline 7: QuillAI Behavioral State Analysis (AI methodology)
