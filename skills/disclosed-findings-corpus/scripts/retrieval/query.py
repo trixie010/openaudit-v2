@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+"""CLI for the disclosed-findings corpus.
+
+Hint search (discovery, one Category B pipeline's angle - pattern grounding):
+  python scripts/retrieval/query.py "first depositor share inflation vault" --protocol-type vault --top 3
+
+Dedup search (confirm-time ONLY, exact scope to the same protocol):
+  python scripts/retrieval/query.py "cross-chain message replay" --dedup --protocol-name MyProto --top 5
+
+Zero third-party deps: retrieval is SQLite FTS5 from the stdlib.
+"""
+import argparse
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # scripts/ on path -> `retrieval.*`
+
+from retrieval.index import FindingsIndex  # noqa: E402
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="Query the disclosed-findings corpus.")
+    ap.add_argument("query", help="free-text description of the code behaviour / bug shape")
+    ap.add_argument("--protocol-type", default=None, help="hint filter: lending|amm|vault|staking|bridge|...")
+    ap.add_argument("--protocol-name", default=None, help="dedup filter: exact target protocol name")
+    ap.add_argument("--dedup", action="store_true", help="use dedup_search (confirm-time) instead of hint_search")
+    ap.add_argument("--top", type=int, default=3)
+    ap.add_argument("--db", default=None, help="path to findings.db (default: skill data/findings.db)")
+    args = ap.parse_args()
+
+    idx = FindingsIndex(Path(args.db)) if args.db else FindingsIndex()
+    if args.dedup:
+        hits = idx.dedup_search(args.query, protocol_name=args.protocol_name, top_k=args.top)
+        for h in hits:
+            print(h.as_dedup_record())
+            print("---")
+    else:
+        hits = idx.hint_search(args.query, protocol_type=args.protocol_type, top_k=args.top)
+        for h in hits:
+            print(h.as_hint())
+            print("---")
+    if not hits:
+        print("(no matches — corpus may be empty, or the query is too narrow)")
+
+
+if __name__ == "__main__":
+    main()

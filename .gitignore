@@ -41,3 +41,10 @@ slither-output.json
 # Personal notes + agent session state (never push: contains live submission status)
 /notes/
 .claude/
+# disclosed-findings-corpus: generated DB + scraped batches (keep only the tiny starter set)
+skills/disclosed-findings-corpus/data/findings.db
+skills/disclosed-findings-corpus/data/*.jsonl
+!skills/disclosed-findings-corpus/data/sample_findings.jsonl
+skills/disclosed-findings-corpus/**/__pycache__/
+skills/disclosed-findings-corpus/data/defihacklabs/
+skills/disclosed-findings-corpus/data/*/

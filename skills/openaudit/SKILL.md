@@ -335,7 +335,7 @@ Run `git init && git add -A && git commit -m init` in the source dir if needed.
 Always use `--metrics=off` with Semgrep to prevent telemetry.
 
 **Category B — AI-driven methodology skills** (pashov, kadenzipfel, forefy, quillai,
-auditmos, trailofbits, archethect, cyfrin): These are structured markdown prompts.
+auditmos, trailofbits, archethect, cyfrin, disclosed-findings-corpus): These are structured markdown prompts.
 For each one, you the AI agent must:
 
 1. Read the skill's SKILL.md (or README.md) in `deps/{skill_repo_name}/`
@@ -543,7 +543,8 @@ runnable with `forge test --match-path`.
 
 ### Step 6.5: Exploit verification - evmbench-style live exploitation (ALL modes)
 
-MODE-INDEPENDENT: needs NO fuzzing. Runs for High/Critical findings that reached referee-CONFIRMED
+MODE-INDEPENDENT: needs NO fuzzing. Runs for ANY severity (not just High/Critical - a real Medium
+deserves the same evidence rigor) that reached referee-CONFIRMED
 with a passing PoC. Cost: minutes per finding; anvil fork ~1GB RAM; exploit runs are seconds.
 Full procedure: [fuzzing-pipeline.md](./fuzzing-pipeline.md) "Exploit verification" section.
 
@@ -565,6 +566,10 @@ Feed prior-audit material ONLY into the dup-risk axis and author-reply columns.
 - Read [how-to-find-existing-audit-reports.md](./how-to-find-existing-audit-reports.md) for tips on how to find existing audit reports for the same project and smart contract.
 - Save the reports, full files and web pages, in `out/{protocol_slug}/prior-audits/`
 - Run parallel agents to search and read through
+- **Corpus dedup**: also query the disclosed-findings corpus at this stage only —
+  `FindingsIndex().dedup_search(finding_statement, protocol_name="<target>")` from
+  `skills/disclosed-findings-corpus/` (exact-match scoped to the same protocol). Like prior-audit
+  material, it feeds only the `dup_risk` column; never call it during Step 5 discovery
 - Prior-audit material feeds the `dup_risk` / author-reply columns at CONFIRM/REPORT time only -
   it never enters discovery prompts (blind-discovery rule above); "false positive" calls come
   from evidence and refutation, not from reading someone else's known-issues list

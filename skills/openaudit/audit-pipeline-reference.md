@@ -227,6 +227,30 @@ shared `out/{protocol_slug}/candidates.csv`; violations become Foundry PoC skele
   works standalone without MCP.
 - **Output**: Write to `{output_dir}/archethect-sc-auditor.md`
 
+### Pipeline 10.5: Disclosed Findings Corpus (Category B, retrieval-grounded)
+- **Skill**: `skills/disclosed-findings-corpus/SKILL.md` (local addition, not a `deps/` submodule)
+- **Type**: Category B — AI methodology, grounded by retrieval over past disclosed findings
+- **What it finds**: recurrent, well-documented DeFi bug classes (oracle manipulation, share
+  inflation, reentrancy, signature replay, rounding/precision, access control) whose *shape*
+  appears in the target — the classes greedy per-file scanners miss and that poor recall causes
+  weak models to overlook
+- **Prereq**: corpus DB built once (`data/findings.db`); see that skill's SKILL.md "Setup".
+  Retrieval is SQLite FTS5 (stdlib) — no sklearn/numpy/embeddings needed
+- **How to run** (per in-scope file/function, same scope as other Category B pipelines):
+  1. `python scripts/retrieval/query.py "<what this code does>" --protocol-type <lending|amm|vault|staking|bridge> --top 3`
+     (run from `skills/disclosed-findings-corpus/`)
+  2. Treat each returned pattern as a hint to check against THIS target's code
+  3. **Hard rule — a retrieved pattern is never itself a finding.** Report ANSWERED only if you
+     can cite the exact line(s) in THIS target's code that cause the failure; restating the
+     retrieved pattern with no target line to point at is REFUTED/UNANSWERED
+  4. Write findings to `out/{protocol_slug}/reports/disclosed-findings-corpus.md`, and record
+     which retrieved finding (title + source) grounded each one
+- **Dedup use is separate** (Step 7 / confirm time): `python scripts/retrieval/query.py "<finding>" --dedup --protocol-name "<target>"`
+  is exact-match scoped to the same protocol — never call it during Step 5 discovery (blind rule)
+- **Why alongside the blind pipelines, not instead**: it is an ADDITIONAL vote, same tier as
+  pashov/kadenzipfel/forefy — let Step 5.5's referee weigh it with the rest
+- **Output**: `{output_dir}/disclosed-findings-corpus.md`
+
 ### Pipeline 11: Recon Magic Fuzzing Executor (Category C)
 - **Repo**: `deps/recon-magic-framework` (Python workflow engine, 75 phase-prompt files)
 - **Type**: executable pipeline - runs Chimera harnesses under Medusa AND Echidna
