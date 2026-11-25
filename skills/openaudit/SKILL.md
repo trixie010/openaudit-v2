@@ -641,18 +641,22 @@ run the deterministic review gate over the whole candidate queue:
 ```bash
 python templates/review_gate.py --slug {protocol_slug} \
   [--handoff out/{slug}/handoff/] [--prior-audits out/{slug}/prior-audits/] \
-  [--impact-ruleset out/{slug}/kb/impact-ruleset.md] [--protocol-name <target>]
+  [--impact-ruleset out/{slug}/kb/impact-ruleset.md] [--protocol-name <target>] \
+  [--memory-db ~/.openaudit/memory/findings.db]
 ```
 
 It cross-checks every candidate against the submitted-findings handoff, prior audits, the
-disclosed corpus (protocol-scoped dedup), intra-run siblings, the program known-issues list, the
-impact ruleset (payability; domain-only-Critical; Low/Info out-of-scope), and evidence
-completeness (file:line, trigger path, confirmed PoC). It writes
+disclosed corpus (protocol-scoped dedup), intra-run siblings, the institutional-memory store
+(past dismissals/known/duplicates), the program known-issues list, the impact ruleset
+(payability; domain-only-Critical; Low/Info out-of-scope), and evidence completeness
+(file:line, trigger path, confirmed PoC). It writes
 `out/{slug}/review/review.md` + `review.jsonl`, one verdict per candidate:
 
-- `duplicate` - matches a submitted finding, prior audit, corpus entry, or an earlier candidate.
-  Drop, or reframe ONLY if the root cause genuinely differs (cite the differing mechanism).
-- `known-issue` - maps to the project's published known issues. Do not submit.
+- `duplicate` - matches a submitted finding, prior audit, corpus entry, an earlier candidate, or a
+  past institutional-memory `duplicate`/`accepted` entry. Drop, or reframe ONLY if the root cause
+  genuinely differs (cite the differing mechanism).
+- `known-issue` - maps to the project's published known issues or a past memory `dismissed`/`known`
+  entry. Do not submit.
 - `high-risk` - missing receipts, or the claimed impact is not payable under the program's table.
   Fix or drop.
 - `uncertain` - sound candidate but not yet weaponized (no confirmed PoC). Return to Step 6.
@@ -663,6 +667,23 @@ row. `uncertain` goes back to Step 6 for a PoC; `duplicate`/`known-issue` are dr
 is fixed or dropped. The script is deterministic *evidence*, not the final word - a fresh reviewer
 subagent re-checks every `uncertain`/`high-risk` and may upgrade only with NEW receipts (never by
 opinion, never by another agent's say-so). Re-run the gate after fixes; it is idempotent.
+
+### Step 7.6: Record the decision in institutional memory
+
+Close the loop so the next run does not repeat this one:
+
+```bash
+# remember this run's gate verdicts (duplicate / known-issue)
+python templates/dismissctl.py import-review --review-jsonl out/{slug}/review/review.jsonl
+
+# or record a manual dismissal / accepted bug
+python templates/dismissctl.py add --protocol {slug} --verdict dismissed \
+  --title "<title>" --reason "<why>" --dup-signature "<signature>" --file <file:line>
+```
+
+Memory lives at `~/.openaudit/memory/findings.db` (override `--db` or `OPENAUDIT_MEMORY_DB`).
+`dismissed`/`known` entries surface as `known-issue` in future gates; `duplicate`/`accepted`
+entries surface as `duplicate`. Query it directly with `dismissctl.py query`.
 
 ### Step 8: Summarise findings
 

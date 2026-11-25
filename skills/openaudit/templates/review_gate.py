@@ -2,8 +2,9 @@
 """Pre-submission Review gate (Studio-Review analog).
 
 Deterministic checks on candidates.csv before anything is promoted/submitted:
-duplicates (submitted handoff, prior audits, disclosed corpus, intra-run),
-program known issues, evidence completeness, and impact-table payability.
+duplicates (submitted handoff, prior audits, disclosed corpus, intra-run,
+institutional memory), program known issues, evidence completeness, and
+impact-table payability.
 
 It does NOT replace the fresh reviewer subagent - it hands that agent receipts.
 Verdicts: ready | uncertain | high-risk | duplicate | known-issue.
@@ -17,6 +18,14 @@ import re
 import sys
 from collections import Counter
 from pathlib import Path
+
+_MEM = None
+try:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import dismissctl as _MEM
+    _DEFAULT_MEM = str(_MEM.default_db())
+except Exception:  # memory helper optional
+    _DEFAULT_MEM = str(Path.home() / ".openaudit" / "memory" / "findings.db")
 
 STOP = set(
     "the a an and or of to in for on with by is are be this that it its as at from into when if "
@@ -91,6 +100,7 @@ def load_candidates(path):
             "summary": r.get("summary", ""),
             "file": r.get("file", ""),
             "line": r.get("line", ""),
+            "vuln_type": r.get("vulnerability_type", ""),
             "trigger": r.get("trigger_flow", ""),
             "input_example": r.get("malicious_input_example", ""),
             "dup_signature": norm_sig(r.get("dup_signature")),
@@ -207,6 +217,7 @@ def main():
     ap.add_argument("--corpus-db", default=str(
         Path(__file__).resolve().parents[2] / "disclosed-findings-corpus" / "data" / "findings.db"))
     ap.add_argument("--protocol-name", default=None, help="corpus dedup filter (exact protocol name)")
+    ap.add_argument("--memory-db", default=_DEFAULT_MEM, help="institutional memory SQLite (empty disables)")
     ap.add_argument("--out", default=None, help="default: out/{slug}/review/")
     ap.add_argument("--dup-threshold", type=float, default=0.55)
     ap.add_argument("--known-threshold", type=float, default=0.50)
@@ -286,6 +297,22 @@ def main():
             if sk >= args.known_threshold:
                 known_refs.append(f"known issue {known[best_k]['id'] or '?'} (sim {sk:.2f})")
 
+        if _MEM is not None and args.memory_db:
+            try:
+                hits = _MEM.memory_matches(
+                    args.memory_db, slug, c["text"], c["dup_signature"],
+                    c["file"], c.get("vuln_type", ""),
+                    min_score=args.known_threshold, limit=3)
+            except Exception as e:  # noqa: BLE001 - memory must never block the gate
+                log(f"memory query failed: {e}")
+                hits = []
+            for h in hits:
+                ref = f"memory {h['verdict']} #{h['id']} '{h['title'][:40]}' (sim {h['score']:.2f})"
+                if h["verdict"] in ("duplicate", "accepted"):
+                    dup_refs.append(ref)
+                else:
+                    known_refs.append(ref)
+
         ev_missing = check_evidence(c)
         impact_ok, impact_reasons = check_impact(c, ruleset)
 
@@ -315,7 +342,9 @@ def main():
             "id": c["id"], "title": c["title"], "severity": c["sev"],
             "verdict": verdict, "reasons": reasons, "fixes": fixes,
             "evidence_missing": ev_missing, "impact_ok": impact_ok,
-            "corpus": chits,
+            "corpus": chits, "file": c["file"], "line": c["line"],
+            "vuln_type": c.get("vuln_type", ""),
+            "dup_signature": c["dup_signature"], "summary": c["summary"],
         })
 
     with (out_dir / "review.jsonl").open("w", encoding="utf-8") as fh:
