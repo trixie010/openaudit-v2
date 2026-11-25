@@ -111,11 +111,21 @@ The command is run once per borderline pair on stdin as JSON:
 {"produced": {...}, "truth": {...}, "similarity": 0.27}
 ```
 
-and must print `{"match": true|false, "reason": "..."}` on stdout. Example:
+and must print `{"match": true|false, "reason": "..."}` on stdout.
+
+A bundled OpenAI-compatible judge is included:
 
 ```bash
---judge-cmd 'opencode run --quiet "Decide if these describe the same bug; print JSON {match,reason}"'
+export JUDGE_BASE_URL=https://api.openai.com/v1   # any compatible endpoint
+export JUDGE_API_KEY=...
+export JUDGE_MODEL=gpt-4o-mini                    # optional
+python skills/eval-harness/scripts/evalctl.py score <slug> \
+  --judge-cmd "python3 skills/eval-harness/scripts/judge_llm.py"
 ```
+
+Smoke-test the plumbing without a network call with `judge_llm.py --self-test`; pointing
+`--judge-cmd` at that mode confirms evalctl invokes the judge and consumes its verdict.
+Any other command that follows the protocol also works.
 
 If the judge fails, the pair stays unmatched (deterministic result is the floor).
 

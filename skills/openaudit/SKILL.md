@@ -279,12 +279,15 @@ flagged / out-of-scope-exclusion-name. Functions with no row are re-queued to a 
 The KB from Stage 0.5 is built in EVERY mode - it is cheap and every other stage depends on it.
 Only the Category C execution differs between modes.
 
-**CROSS-CUTTING CHECKS (mandatory, every target, every mode)**: also run Pipeline 8.5's two
+**CROSS-CUTTING CHECKS (mandatory, every target, every mode)**: also run Pipeline 8.5's four
 generic passes and record them in `out/{slug}/reports/cross-cutting.md` - (a) slippage/deadline
 bounds on every pool/market-dependent call (`burn`/`collect`/`mint`/`swap`/`add`/`remove`,
-`liquidate`/`redeem`/`withdraw`), and (b) documentation-vs-code parity (documented
-burnable/pausable/caps/fees/roles/upgradeability). They are cheap and repeatedly produce
-contest findings that coding-only review misses.
+`liquidate`/`redeem`/`withdraw`), (b) documentation-vs-code parity (documented
+burnable/pausable/caps/fees/roles/upgradeability), (c) branch parity (alternate/privileged
+branches must keep the main path's remainder/fee/validation invariants), and (d) dual
+set-membership (approve/disapprove, allow/deny, add/remove must reject the opposite membership
+and be idempotent). They are cheap and repeatedly produce contest findings that coding-only
+review misses.
 
 The skill repos are in `deps/`. There are three categories of pipelines:
 

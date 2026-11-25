@@ -198,7 +198,7 @@ shared `out/{protocol_slug}/candidates.csv`; violations become Foundry PoC skele
 - **Output**: Write to `{output_dir}/auditmos-skills.md`
 
 ### Pipeline 8.5: Cross-cutting checks (mandatory, every target)
-Two cheap generic passes that keep paying off. Run them in every mode regardless of protocol
+Four cheap generic passes that keep paying off. Run them in every mode regardless of protocol
 type; they are independent of the AI checklists. Write results to
 `{output_dir}/cross-cutting.md` with one row per checked call/feature:
 `location | check | result | finding-id`.
@@ -221,6 +221,18 @@ type; they are independent of the AI checklists. Write results to
    table - spec-only divergence with no fund impact is Low/QA, so report it without inflating.
    Include token-standard expectations (`burn`/`burnFrom`, `permit`), upgradeability claims, and
    documented caps/limits.
+3. **Branch parity.** For every alternate or privileged branch (`if (msg.sender == X)`,
+   `if (migration)`, `if (initializing)`, `else`, early `return`), compare it against the main
+   path and require it to preserve the same invariants: remainder/rounding updates, fee
+   snapshots, allowance/balance checks, event and state writes, caps. Diff the branches line by
+   line and ask "which write from the main path is missing here?". A branch that skips a
+   remainder reset, a fee checkpoint, or a validation is a finding even when reachable only from
+   a trusted contract, because it changes user accounting.
+4. **Dual set-membership.** Every approve/disapprove, allow/deny, add/remove, sign/cancel, or
+   vote-for/vote-against pair must reject the opposite membership and be idempotent. Check both
+   directions: adding to set A must fail if the caller is already in set B, and vice versa;
+   removing must not leave a stale entry that still counts. Tally bugs here silently let one
+   actor count in both camps or double-count after a delete/re-propose.
 
 ### Pipeline 9: Trail of Bits Skills (AI + tools)
 - **Repo**: `deps/trailofbits-skills/`
