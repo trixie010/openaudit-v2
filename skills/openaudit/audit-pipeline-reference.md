@@ -197,6 +197,31 @@ shared `out/{protocol_slug}/candidates.csv`; violations become Foundry PoC skele
   3. For each applicable skill, read its checklist.md and systematically verify each item
 - **Output**: Write to `{output_dir}/auditmos-skills.md`
 
+### Pipeline 8.5: Cross-cutting checks (mandatory, every target)
+Two cheap generic passes that keep paying off. Run them in every mode regardless of protocol
+type; they are independent of the AI checklists. Write results to
+`{output_dir}/cross-cutting.md` with one row per checked call/feature:
+`location | check | result | finding-id`.
+
+1. **Slippage and deadline controls on externally-influenced calls.** For every call whose
+   token amounts depend on live pool/market state - Uniswap-style `burn`, `collect`, `mint`,
+   `swap`, `addLiquidity`/`removeLiquidity`, `decreaseLiquidity`, `exactInput*`; lending
+   `liquidate`/`redeem`/`withdraw` - require caller-supplied `amount0Min`/`amount1Min` (or
+   `amountOutMin`) and `deadline`, and verify they are enforced. Missing or ignored bounds let a
+   front-runner sandwich the user (Medium; High if repeatable to drain). Do not accept "the
+   router is trusted" unless the call is provably router-only AND the router supplies bounds.
+   Typical smells: `pool.burn(...)` followed by a transfer with no min check;
+   `collect(type(uint128).max, type(uint128).max)`; swaps with `amountLimit = 0`; a `deadline`
+   argument that is never compared to `block.timestamp`.
+2. **Documentation-vs-code parity.** Read every README/NatSpec/whitepaper/docs link in scope and
+   list each promised feature or guarantee; grep the code for each. Missing or contradictory
+   implementation is a finding (e.g. docs say the token is burnable but there is no `burn`;
+   docs say pausable but no pause path; docs say fee <= X but the setter is unbounded; docs claim
+   immutable/renounced ownership but an admin remains). Severity follows the program impact
+   table - spec-only divergence with no fund impact is Low/QA, so report it without inflating.
+   Include token-standard expectations (`burn`/`burnFrom`, `permit`), upgradeability claims, and
+   documented caps/limits.
+
 ### Pipeline 9: Trail of Bits Skills (AI + tools)
 - **Repo**: `deps/trailofbits-skills/`
 - **Type**: Category A+B — mixed

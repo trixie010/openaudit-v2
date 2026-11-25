@@ -279,6 +279,13 @@ flagged / out-of-scope-exclusion-name. Functions with no row are re-queued to a 
 The KB from Stage 0.5 is built in EVERY mode - it is cheap and every other stage depends on it.
 Only the Category C execution differs between modes.
 
+**CROSS-CUTTING CHECKS (mandatory, every target, every mode)**: also run Pipeline 8.5's two
+generic passes and record them in `out/{slug}/reports/cross-cutting.md` - (a) slippage/deadline
+bounds on every pool/market-dependent call (`burn`/`collect`/`mint`/`swap`/`add`/`remove`,
+`liquidate`/`redeem`/`withdraw`), and (b) documentation-vs-code parity (documented
+burnable/pausable/caps/fees/roles/upgradeability). They are cheap and repeatedly produce
+contest findings that coding-only review misses.
+
 The skill repos are in `deps/`. There are three categories of pipelines:
 
 **SUBAGENT RESUMABILITY (mandatory)**: every spawned subagent follows
@@ -649,7 +656,8 @@ It cross-checks every candidate against the submitted-findings handoff, prior au
 disclosed corpus (protocol-scoped dedup), intra-run siblings, the institutional-memory store
 (past dismissals/known/duplicates), the program known-issues list, the impact ruleset
 (payability; domain-only-Critical; Low/Info out-of-scope), and evidence completeness
-(file:line, trigger path, confirmed PoC). It writes
+(file:line, trigger path, `status=confirmed-*` AND a PoC marker in `poc_status` -
+written/passing/executable/differential; `confirmed-read` is NOT submission-grade). It writes
 `out/{slug}/review/review.md` + `review.jsonl`, one verdict per candidate:
 
 - `duplicate` - matches a submitted finding, prior audit, corpus entry, an earlier candidate, or a
@@ -660,6 +668,10 @@ disclosed corpus (protocol-scoped dedup), intra-run siblings, the institutional-
 - `high-risk` - missing receipts, or the claimed impact is not payable under the program's table.
   Fix or drop.
 - `uncertain` - sound candidate but not yet weaponized (no confirmed PoC). Return to Step 6.
+  Also where the precision guard parks generic ERC20 hygiene (SafeERC20/ignored returns/
+  fee-on-transfer/decimals), admin-config, and centralization (e.g. pause) claims: these need an
+  unprivileged theft/insolvency path or they stay QA - judges reject them even when the README
+  says such tokens are in scope.
 - `ready` - receipts complete and impact payable.
 
 **Gate rule:** ONLY `ready` findings may be promoted to submission grade or written as a `submit`

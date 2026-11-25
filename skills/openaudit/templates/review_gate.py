@@ -8,6 +8,12 @@ impact-table payability.
 
 It does NOT replace the fresh reviewer subagent - it hands that agent receipts.
 Verdicts: ready | uncertain | high-risk | duplicate | known-issue.
+
+Precision guard (learned from C4 replays): generic ERC20 hygiene (SafeERC20 /
+ignored returns / fee-on-transfer / decimals), admin-config, and centralization
+(e.g. pause) claims are auto-held at `uncertain` unless they show an unprivileged
+impact path. Judges repeatedly reject these as QA even when README says such
+tokens are in scope.
 """
 import argparse
 import csv
@@ -196,14 +202,57 @@ def check_impact(c, ruleset):
     return (not reasons), reasons
 
 
+_GENERIC_HYGIENE = re.compile(
+    r"safeerc20|unchecked.erc20|return value|returns? false|fee.on.transfer|"
+    r"rebasing|non.standard|decimals?\b|18\s*-\s*decimals|transfer\(\)|2300",
+    re.I,
+)
+_CENTRAL = re.compile(
+    r"\bpaused?\b|onlyadmin|admin[- ]?(config|misconfig)|misconfiguration|"
+    r"centraliz|privileged role|owner can",
+    re.I,
+)
+_UNPRIV = re.compile(
+    r"steal|theft|drain|insolven|anyone can|permissionless|unprivileged|any user",
+    re.I,
+)
+
+
+def check_quality(c):
+    hay = " ".join([
+        c.get("title", ""), c.get("summary", ""), c.get("trigger", ""),
+        c.get("input_example", ""), c.get("vuln_type", ""),
+    ])
+    reasons = []
+    if _GENERIC_HYGIENE.search(hay):
+        reasons.append(
+            "generic-hygiene claim (token/config robustness) - needs an unprivileged "
+            "theft/insolvency PoC before it is submission-grade")
+    elif _CENTRAL.search(hay) and not _UNPRIV.search(hay):
+        reasons.append(
+            "admin-config/centralization claim - needs an unprivileged impact path")
+    return reasons
+
+
+def is_poc_backed(status, poc_status):
+    st = (status or "").strip().lower()
+    poc = (poc_status or "").strip().lower()
+    if poc.startswith("not") or poc in ("", "none", "no", "n/a", "pending", "suspected"):
+        return False
+    markers = ("executable", "differential", "written", "passing", "verified", "poc", "tested")
+    return any(m in poc for m in markers) or any(m in st for m in markers)
+
+
 def check_evidence(c):
     missing = []
     if not c["file"] or not str(c["line"]).strip():
         missing.append("file:line")
     if not (c["trigger"] or c["input_example"]):
         missing.append("trigger path / malicious input")
-    if not (c["status"].lower().startswith("confirmed") or c["verdict"].upper() == "CONFIRMED"):
-        missing.append("confirmed PoC (status not confirmed-*)")
+    confirmed = c["status"].lower().startswith("confirmed") or c["verdict"].upper() == "CONFIRMED"
+    poc_backed = is_poc_backed(c["status"], (c["row"].get("poc_status") or ""))
+    if not (confirmed and poc_backed):
+        missing.append("confirmed + PoC-backed (status=confirmed-* and poc_status=written/passing/executable)")
     return missing
 
 
@@ -315,6 +364,7 @@ def main():
 
         ev_missing = check_evidence(c)
         impact_ok, impact_reasons = check_impact(c, ruleset)
+        quality_reasons = check_quality(c)
 
         if dup_refs:
             verdict = "duplicate"
@@ -328,6 +378,10 @@ def main():
             verdict = "high-risk"
             reasons += impact_reasons
             fixes.append("re-map to a payable impact class or drop")
+        elif quality_reasons:
+            verdict = "uncertain"
+            reasons += quality_reasons
+            fixes.append("show an unprivileged impact/PoC or drop (generic hygiene/admin-config)")
         elif ev_missing:
             if any(m in ev_missing for m in ("file:line", "trigger path / malicious input")):
                 verdict = "high-risk"
