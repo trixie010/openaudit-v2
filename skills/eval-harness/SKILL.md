@@ -87,6 +87,22 @@ title+summary+trigger). Each GT is matched by its best produced row; produced ro
 above `--threshold` align to their best GT. Rows in `[--judge-floor, --threshold)`
 are listed as low-confidence; pass `--judge-cmd` to let an LLM confirm them.
 
+### Threshold calibration (read before tuning)
+
+Absolute cosine thresholds do NOT port across contests - GT body length and wording dominate.
+Observed on two blind replays:
+
+| Contest | Correct-pair sims | Best false sim | Gap-midpoint |
+|---|---|---|---|
+| 2024-06-vultisig | 0.181-0.242 | 0.151 | ~0.17 |
+| 2024-05-munchables | 0.141-0.230 | 0.121 | ~0.13 |
+
+A best-vs-second margin rule was also tried and rejected: a false pair scored ratio 2.64 while a
+true pair scored 1.11. So do not tune a new global threshold on one contest and call it a score -
+report the default run AND the gap-calibrated run, and use `--judge-cmd` for cross-contest
+comparisons. Any threshold that recovers the true pairs on these two runs is post-hoc; treat it as
+diagnostic, not a general default.
+
 ### `--judge-cmd` protocol
 
 The command is run once per borderline pair on stdin as JSON:
