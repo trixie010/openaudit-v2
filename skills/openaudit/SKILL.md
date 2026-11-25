@@ -74,6 +74,21 @@ Create a project `out/{protocol_slug}`.
 - Slugify the project name using kebab casing.
 - If we gave a deployed smart contract address, include 6 first letters in its name e.g. `aave-0x123456`.
 
+### Step 2.5: Score the target (program intel)
+
+The operator usually pastes the whole bounty program page. Before spending pipeline budget, run the
+target-intel extractor on that text and read the score + red flags:
+
+```shell
+python skills/target-intel/scripts/program_intel.py --slug {protocol_slug} --text <pasted-page.md>
+# or pipe the paste: pbpaste | python skills/target-intel/scripts/program_intel.py --slug {protocol_slug} --stdin
+```
+
+It writes `out/{slug}/program-intel.md` + `.json` (payout table, TVL, payable impacts, KYC/response
+terms, chains, competition) and prints an EV score (Tier A/B/C). Use the extracted payout table to
+seed `SCOPE.md` and `kb/impact-ruleset.md` verbatim; treat red flags as "verify before committing
+hours". Heuristic, not a promise - the operator decides go/no-go.
+
 ### Step 3: Set up skill
 
 Assume we are auditing Solidity unless otherwise stated.
@@ -421,7 +436,8 @@ Before promoting ANY candidate to CONFIRMED / submission-grade (writing a `submi
 `dup_signature` to the matched id, log `dup-of:<id>` in the deviations note, and leave the
 candidate at its prior status. Discovery stays blind to OTHER pipelines' UNSUBMITTED candidates:
 only operator-submitted findings, known issues, and prior audits are shared across agents; never
-hand one pipeline another pipeline's un-promoted candidate list.
+hand one pipeline another pipeline's un-promoted candidate list. The Step 7.5 review gate enforces
+the dedup-before-promotion rule and is the final check before anything is submitted.
 
 **Category C — Fuzzing executor** (Recon Magic + Chimera + Medusa + Echidna): an autonomous
 pipeline that builds property harnesses and grinds them. See
@@ -616,6 +632,37 @@ Feed prior-audit material ONLY into the dup-risk axis and author-reply columns.
 - Prior-audit material feeds the `dup_risk` / author-reply columns at CONFIRM/REPORT time only -
   it never enters discovery prompts (blind-discovery rule above); "false positive" calls come
   from evidence and refutation, not from reading someone else's known-issues list
+
+### Step 7.5: Submission Review gate (required before Step 8)
+
+Never promote a finding to submission grade on discovery alone. After Step 7 and before Step 8,
+run the deterministic review gate over the whole candidate queue:
+
+```bash
+python templates/review_gate.py --slug {protocol_slug} \
+  [--handoff out/{slug}/handoff/] [--prior-audits out/{slug}/prior-audits/] \
+  [--impact-ruleset out/{slug}/kb/impact-ruleset.md] [--protocol-name <target>]
+```
+
+It cross-checks every candidate against the submitted-findings handoff, prior audits, the
+disclosed corpus (protocol-scoped dedup), intra-run siblings, the program known-issues list, the
+impact ruleset (payability; domain-only-Critical; Low/Info out-of-scope), and evidence
+completeness (file:line, trigger path, confirmed PoC). It writes
+`out/{slug}/review/review.md` + `review.jsonl`, one verdict per candidate:
+
+- `duplicate` - matches a submitted finding, prior audit, corpus entry, or an earlier candidate.
+  Drop, or reframe ONLY if the root cause genuinely differs (cite the differing mechanism).
+- `known-issue` - maps to the project's published known issues. Do not submit.
+- `high-risk` - missing receipts, or the claimed impact is not payable under the program's table.
+  Fix or drop.
+- `uncertain` - sound candidate but not yet weaponized (no confirmed PoC). Return to Step 6.
+- `ready` - receipts complete and impact payable.
+
+**Gate rule:** ONLY `ready` findings may be promoted to submission grade or written as a `submit`
+row. `uncertain` goes back to Step 6 for a PoC; `duplicate`/`known-issue` are dropped; `high-risk`
+is fixed or dropped. The script is deterministic *evidence*, not the final word - a fresh reviewer
+subagent re-checks every `uncertain`/`high-risk` and may upgrade only with NEW receipts (never by
+opinion, never by another agent's say-so). Re-run the gate after fixes; it is idempotent.
 
 ### Step 8: Summarise findings
 

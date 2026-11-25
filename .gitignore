@@ -48,3 +48,6 @@ skills/disclosed-findings-corpus/data/*.jsonl
 skills/disclosed-findings-corpus/**/__pycache__/
 skills/disclosed-findings-corpus/data/defihacklabs/
 skills/disclosed-findings-corpus/data/*/
+# eval-harness: cloned contests, answer keys, scorecards (regenerate with evalctl.py)
+eval-runs/
+skills/eval-harness/**/__pycache__/
