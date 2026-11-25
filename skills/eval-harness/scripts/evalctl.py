@@ -242,6 +242,15 @@ def norm_sev(raw):
     return "Unknown"
 
 
+def is_poc_backed(status, poc_status):
+    st = (status or "").strip().lower()
+    poc = (poc_status or "").strip().lower()
+    if poc.startswith("not") or poc in ("", "none", "no", "n/a", "pending", "suspected"):
+        return False
+    markers = ("executable", "differential", "written", "passing", "verified", "poc", "tested")
+    return any(m in poc for m in markers) or any(m in st for m in markers)
+
+
 def cmd_parse(args):
     slug = slug_base(args.slug)
     wd = workdir_for(args)
@@ -269,7 +278,10 @@ def cmd_parse(args):
             title = (vt + ": " + sm[:120]).strip(": ").strip()
         status = (r.get("status") or "").strip()
         verdict = (r.get("referee_verdict") or "").strip()
-        submitted = status.lower().startswith("confirmed") or verdict.upper() == "CONFIRMED"
+        poc_status = (r.get("poc_status") or "").strip()
+        read_confirmed = status.lower().startswith("confirmed") or verdict.upper() == "CONFIRMED"
+        poc_backed = is_poc_backed(status, poc_status)
+        submitted = read_confirmed and poc_backed
         fname = Path(r.get("file") or "").name
         text = " ".join(x for x in (title, r.get("summary", ""), r.get("trigger_flow", ""), fname) if x)
         produced.append({
@@ -282,6 +294,8 @@ def cmd_parse(args):
             "line": r.get("line", ""),
             "status": status,
             "referee_verdict": verdict,
+            "read_confirmed": read_confirmed,
+            "poc_backed": poc_backed,
             "submitted": submitted,
             "text": text,
         })
@@ -293,7 +307,8 @@ def cmd_parse(args):
     hm = [p for p in produced if p["severity"] in SEV_HM]
     log(f"[parse] {len(produced)} rows -> {len(hm)} H/M  "
         f"sev={dict(Counter(p['severity'] for p in produced))}  "
-        f"submitted={sum(1 for p in hm if p['submitted'])}")
+        f"read_confirmed={sum(1 for p in hm if p['read_confirmed'])}  "
+        f"poc_backed={sum(1 for p in hm if p['submitted'])}")
     return 0
 
 
@@ -383,9 +398,12 @@ def cmd_score(args):
 
     matched_all = {j for _, j, _ in aligned}
     matched_conf = {j for i, j, _ in aligned if produced[i]["submitted"]}
+    matched_read = {j for i, j, _ in aligned if produced[i].get("read_confirmed")}
     hm_idx = [i for i, p in enumerate(produced) if p["severity"] in SEV_HM]
     sub_idx = [i for i in hm_idx if produced[i]["submitted"]]
+    read_idx = [i for i in hm_idx if produced[i].get("read_confirmed")]
     aligned_sub = {i for i, _, _ in aligned if produced[i]["submitted"]}
+    aligned_read = {i for i, _, _ in aligned if produced[i].get("read_confirmed")}
     per_gt = Counter(j for _, j, _ in aligned)
     dups = [(j, per_gt[j]) for j in per_gt if per_gt[j] > 1]
 
@@ -395,9 +413,13 @@ def cmd_score(args):
     def recall_conf(idx):
         return (sum(1 for j in idx if j in matched_conf) / len(idx)) if idx else None
 
+    def recall_read(idx):
+        return (sum(1 for j in idx if j in matched_read) / len(idx)) if idx else None
+
     high_idx = [j for j, g in enumerate(gt) if g["severity"] == "High"]
     med_idx = [j for j, g in enumerate(gt) if g["severity"] == "Medium"]
     fp = [produced[i] for i in sub_idx if i not in aligned_sub]
+    fp_read = [produced[i] for i in read_idx if i not in aligned_read]
 
     score = {
         "slug": slug,
@@ -406,14 +428,19 @@ def cmd_score(args):
         "produced_total": len(produced),
         "produced_hm": len(hm_idx),
         "produced_submitted": len(sub_idx),
+        "produced_read_confirmed": len(read_idx),
         "matched_gt_all": len(matched_all),
         "matched_gt_confirmed": len(matched_conf),
+        "matched_gt_read_confirmed": len(matched_read),
         "recall_all": recall(list(range(len(gt)))),
         "recall_confirmed": recall_conf(list(range(len(gt)))),
+        "recall_read_confirmed": recall_read(list(range(len(gt)))),
         "recall_high": recall(high_idx),
         "recall_medium": recall(med_idx),
         "precision_submitted": (len(aligned_sub) / len(sub_idx)) if sub_idx else None,
+        "precision_read_confirmed": (len(aligned_read) / len(read_idx)) if read_idx else None,
         "false_positives": len(fp),
+        "false_positives_read_confirmed": len(fp_read),
         "duplicates": sum(c - 1 for _, c in dups),
         "threshold": args.threshold,
         "judge_floor": args.judge_floor,
@@ -436,13 +463,16 @@ def cmd_score(args):
     lines.append("| Metric | Value |")
     lines.append("|---|---|")
     lines.append(f"| Answer key (unique H/M) | {score['gt_counts']} total={score['gt_total']} |")
-    lines.append(f"| Produced H/M | {score['produced_hm']} (submitted {score['produced_submitted']}) |")
+    lines.append(f"| Produced H/M | {score['produced_hm']} (read-confirmed {score['produced_read_confirmed']}, PoC-backed {score['produced_submitted']}) |")
     lines.append(f"| Recall - all | {pct(score['recall_all'])} ({score['matched_gt_all']}/{score['gt_total']}) |")
-    lines.append(f"| Recall - confirmed | {pct(score['recall_confirmed'])} ({score['matched_gt_confirmed']}/{score['gt_total']}) |")
+    lines.append(f"| Recall - PoC-backed | {pct(score['recall_confirmed'])} ({score['matched_gt_confirmed']}/{score['gt_total']}) |")
+    lines.append(f"| Recall - read-confirmed | {pct(score['recall_read_confirmed'])} ({score['matched_gt_read_confirmed']}/{score['gt_total']}) |")
     lines.append(f"| Recall - High | {pct(score['recall_high'])} |")
     lines.append(f"| Recall - Medium | {pct(score['recall_medium'])} |")
-    lines.append(f"| Precision - submitted | {pct(score['precision_submitted'])} |")
-    lines.append(f"| False positives (submitted) | {score['false_positives']} |")
+    lines.append(f"| Precision - PoC-backed | {pct(score['precision_submitted'])} |")
+    lines.append(f"| Precision - read-confirmed | {pct(score['precision_read_confirmed'])} |")
+    lines.append(f"| False positives (PoC-backed) | {score['false_positives']} |")
+    lines.append(f"| False positives (read-confirmed) | {score['false_positives_read_confirmed']} |")
     lines.append(f"| Duplicate submissions | {score['duplicates']} |")
     lines.append("")
 
@@ -458,7 +488,7 @@ def cmd_score(args):
         lines.append("_none - full recall_")
     lines.append("")
 
-    lines.append(f"## False positives (submitted but unmatched) ({len(fp)})")
+    lines.append(f"## False positives (PoC-backed but unmatched) ({len(fp)})")
     lines.append("")
     if fp:
         lines.append("| ID | Sev claimed | Title |")
@@ -468,6 +498,15 @@ def cmd_score(args):
     else:
         lines.append("_none_")
     lines.append("")
+
+    if fp_read:
+        lines.append(f"## Read-confirmed but unmatched (no PoC) ({len(fp_read)})")
+        lines.append("")
+        lines.append("| ID | Sev claimed | Title |")
+        lines.append("|---|---|---|")
+        for p in fp_read:
+            lines.append(f"| {p['id']} | {p['severity']} | {p['title'][:110]} |")
+        lines.append("")
 
     lines.append(f"## Duplicates ({score['duplicates']})")
     lines.append("")

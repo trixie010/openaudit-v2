@@ -69,10 +69,15 @@ Outputs, under `--workdir`:
 
 - **Recall (all)** = unique GT H/M matched by ANY produced row / total GT H/M.
   "Did openaudit surface the bug at all?"
-- **Recall (confirmed)** = same, restricted to produced rows with
-  `status=confirmed-*` or `referee_verdict=CONFIRMED`. "Did it prove it enough to submit?"
-- **Precision (submitted)** = aligned submitted H/M / all submitted H/M. Low value
-  = many false positives reaching submission grade.
+- **Recall (PoC-backed)** = same, restricted to produced rows that are BOTH
+  confirmed (`status=confirmed-*` or `referee_verdict=CONFIRMED`) AND backed by a
+  PoC (`poc_status` marks executable/differential/written/passing/verified/poc).
+  This is the submission-grade metric.
+- **Recall (read-confirmed)** = same, restricted to confirmed rows regardless of
+  PoC. The gap vs PoC-backed = findings that look right but are unproven.
+- **Precision (PoC-backed / read-confirmed)** = aligned submitted H/M / all such
+  H/M. Low value = many false positives reaching that grade. Only PoC-backed rows
+  should be treated as real submissions; `confirmed-read` is never submittable.
 - **Duplicates** = extra aligned produced rows beyond the first per GT root.
   This is the metric to minimize; it maps to C4/Sherlock duplicate penalties.
 - **Per-severity recall** = separate High vs Medium recall (missing Highs hurts most).
