@@ -15,6 +15,26 @@ import csv
 from slither.slither import Slither
 
 
+def src_file(f) -> str:
+    """Project-root-relative source path of a slither function.
+
+    Slither's version-dependent API: older releases expose `filename_short`,
+    newer ones only expose the Filename triple (absolute/used/relative/short).
+    Prefer `relative` (project-root relative), fall back to `short`.
+    """
+    sm = getattr(f, "source_mapping", None)
+    if sm is None:
+        return "?"
+    fn = getattr(sm, "filename", None)
+    if fn is None:
+        return "?"
+    for attr in ("relative", "short", "used"):
+        val = getattr(fn, attr, None)
+        if val:
+            return str(val)
+    return str(fn)
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--src", default=".", help="target project root (default: cwd)")
@@ -33,7 +53,7 @@ def main() -> None:
         for f in c.functions:
             if f.is_implemented and f.visibility in ("public", "external") and not f.name.startswith("_"):
                 try:
-                    file = f.source_mapping.filename_short
+                    file = src_file(f)
                     line = f.source_mapping.lines[0]
                 except Exception:
                     file, line = "?", 0

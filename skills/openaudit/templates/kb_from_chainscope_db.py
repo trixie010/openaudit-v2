@@ -31,7 +31,23 @@ def main() -> None:
     scope = None
     if args.in_scope_file:
         scope = {l.strip().lstrip("./") for l in open(args.in_scope_file) if l.strip() and not l.startswith("#")}
-    def insc(file): return "true" if scope is None or (file in scope) else "false"
+    def insc(file):
+        """Scope match tolerant of root-prefix drift.
+
+        Chainscope stores paths relative to the indexed root (e.g. `vault/V4Vault.sol`
+        when `src` was the root), while SCOPE.md lists them project-relative
+        (`src/vault/V4Vault.sol`). Normalize both to a `src/`-stripped tail and
+        compare on that plus the exact string.
+        """
+        if scope is None:
+            return "true"
+        f = str(file or "").replace("\\", "/").lstrip("./")
+        for s in scope:
+            if f == s:
+                return "true"
+            if f.lstrip("./").replace("src/", "", 1) == s.replace("src/", "", 1):
+                return "true"
+        return "false"
     db = sqlite3.connect(args.db)
 
     # 1) graph-functions.csv
