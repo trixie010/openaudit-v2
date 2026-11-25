@@ -195,9 +195,13 @@ how findings like in-scope-code-strands-into-excluded-module get caught), while 
 auto-stamps any residual out-of-scope row REFUTED with the SCOPE.md line - agents never burn
 effort or budget on excluded files. Do not regenerate these by LLM
 memory - the scripts are deterministic and their output is the anti-skim ground truth.
-ANSWERING RULE: tier M is cleared ONCE (first answering agent updates kritt.md in place; other
-pipelines read it, they don't re-answer). Tier S is answered PER PIPELINE, because the clever
-questions are where findings live and different methodologies see different angles.
+ANSWERING RULE: tier M (mechanical) is cleared ONCE by the first answering agent, which updates
+kb/kritt.md in place; later pipelines READ the cleared rows and do NOT re-answer them - if they
+disagree they log a deviation ONLY to `out/{slug}/reports/{pipeline}-kritt-deviations.md` and
+never edit kritt.md. Tier S (semantic) is answered PER Category B pipeline: EVERY pipeline answers
+EVERY tier S row from its own angle (S rows ship trigger=AGENT-ASSIGN; each answering agent sets
+ATTACKER-DRIVEN / ROUTINE-OPERATION / BOTH). Tier S is NOT "one agent answers, the rest watch" -
+the clever questions are where findings live and different methodologies see different angles.
 
 AGENT-GENERATED (during the run, citing the mechanical artifacts):
 7. `function-docs.md` - one-paragraph intent summary per contract and per public/external function
@@ -267,7 +271,9 @@ The skill repos are in `deps/`. There are three categories of pipelines:
 incremental appends, idempotent unit keys. The parent maintains `out/{slug}/task-registry.json`
 (`{id, task_id, status, checkpoint, ts}`) for every agent: API hiccup in-session = re-invoke the
 saved `task_id`; process death = fresh agent with the §2 resume directive. The ledger, corpus and
-candidates files are the state; conversations are disposable.
+candidates files are the state; conversations are disposable. Category B agents also keep
+`out/{slug}/reports/{agent}.progress.json` and read `out/{slug}/handoff/` at start; a candidate is
+dedup-checked against the handoff before it may be promoted (see HANDOFF below).
 
 **RUN CONTEXT (mandatory, all agent prompts)**: every agent prompt begins with the header from
 `templates/run-context.md` - repo, pinned commit, in-scope files, deps, workspace, KB paths.
@@ -338,19 +344,37 @@ Always use `--metrics=off` with Semgrep to prevent telemetry.
 auditmos, trailofbits, archethect, cyfrin, disclosed-findings-corpus): These are structured markdown prompts.
 For each one, you the AI agent must:
 
+**Resume + incremental-write (ENFORCED - see [subagent-protocol.md](./subagent-protocol.md))**:
+before any analysis, run the §2 resume check - open
+`out/{protocol_slug}/reports/{skill_repo_name}.progress.json` and the report; if a unit key is
+already complete, do NOT redo it. Keep that progress file current
+(`{agent, started_ts, updated_ts, last_unit, units:[{key,status}], status}`) and APPEND each
+settled finding / kritt-row flip to disk the moment it is decided - never batch to the end.
+Stable unit keys (finding slug, kritt row-id) make resume idempotent: grep the key before
+re-adding. If the agent dies on an API error / network drop / process kill, relaunch with the §2
+resume directive and continue from the first unfinished key; write `## RESUME {ts} from {key}` at
+the top of the next append. Completed work is NEVER re-derived.
+
 1. Read the skill's SKILL.md (or README.md) in `deps/{skill_repo_name}/`
 2. Read any referenced vulnerability databases, checklists, or attack vector files
 3. Systematically analyze the downloaded source code against those patterns
-4. Write findings to `out/{protocol_slug}/reports/{skill_repo_name}.md`
-5. Answer the kb/kritt.md ledger - TIER M (mechanical) rows only if still UNANSWERED (the first
-   answering agent updates kritt.md in place; later agents read, not re-grind); TIER S (semantic)
-   rows ALL of them, per pipeline. KRITT discipline: the analysis is not "done" when you feel
-   you've looked enough - it is done when every row you own carries ANSWERED (finding with
-   receipts) / REFUTED (exact blocking line; role-gate refutations must clear the 3-part
-   bypass sub-check) - UNANSWERED is only legal across session boundaries, where a fresh agent
-   re-queues it. Work the list in its given (mechanic-ordered) sequence; tier S rows get your
-   best attention, not the leftovers. ROUTINE-OPERATION rows: "only whitelisted callers can do
-   it" is NOT an answer - it CONFIRMS the routine trigger; the severity floor applies.
+4. Write findings to `out/{protocol_slug}/reports/{skill_repo_name}.md` - INCREMENTALLY, one
+   finding at a time (append-only), updating the `.progress.json` checkpoint after each.
+5. Answer the kb/kritt.md ledger.
+   - TIER M (mechanical): rows only if still UNANSWERED. The first answering agent clears each
+     family ONCE and updates kritt.md in place; every later pipeline READS the cleared rows and
+     does NOT re-answer. A later pipeline that disagrees logs a deviation ONLY to
+     `out/{slug}/reports/{pipeline}-kritt-deviations.md` - it never edits or overwrites kritt.md.
+   - TIER S (semantic): ALL of them, every pipeline, from your own angle - each S row ships
+     trigger=AGENT-ASSIGN and you set ATTACKER-DRIVEN / ROUTINE-OPERATION / BOTH. S rows are
+     answered PER Category B pipeline, never "one agent answers, the rest watch".
+   KRITT discipline: the analysis is not "done" when you feel you've looked enough - it is done
+   when every row you own carries ANSWERED (finding with receipts) / REFUTED (exact blocking
+   line; role-gate refutations must clear the 3-part bypass sub-check). UNANSWERED is only legal
+   across session boundaries, where a fresh agent re-queues it. Work the list in its given
+   (mechanic-ordered) sequence; tier S rows get your best attention, not the leftovers.
+   ROUTINE-OPERATION rows: "only whitelisted callers can do it" is NOT an answer - it CONFIRMS
+   the routine trigger; the severity floor applies.
 
 These skills require NO external tools — you perform the analysis using your own reasoning
 over the code, guided by the methodology in each skill file.
@@ -379,6 +403,25 @@ declaring code clean):
 - **Second-pass falsification before any REFUTED**: re-read every cited blocking line, rebuild
   the trigger path end-to-end (entry -> state -> vulnerable op), actively try to disprove the
   blocker; missing evidence re-opens the row.
+
+**HANDOFF - submitted findings, known issues, prior audits (mandatory before promotion)**:
+
+The operator maintains `out/{slug}/handoff/` and it is injected into every remaining Category B
+agent's run-context (see [templates/run-context.md](./templates/run-context.md)):
+
+- `submitted-findings.md` - findings the operator got from a subagent and DECIDED TO SUBMIT
+  (id, title, severity, `file:line`, root cause, `dup_signature`, submission ref). Updated LIVE
+  as submissions happen.
+- `known-issues.md` - the program's published known issues / acceptable-risk list.
+- `prior-audits/` - index of prior audit reports (Step 7 artifacts).
+
+Before promoting ANY candidate to CONFIRMED / submission-grade (writing a `submit` row to
+`candidates.csv`, or flipping `referee_verdict`), the agent MUST dedup-check it against
+`submitted-findings.md`, `known-issues.md`, and `prior-audits/`. On a match: do NOT promote - set
+`dup_signature` to the matched id, log `dup-of:<id>` in the deviations note, and leave the
+candidate at its prior status. Discovery stays blind to OTHER pipelines' UNSUBMITTED candidates:
+only operator-submitted findings, known issues, and prior audits are shared across agents; never
+hand one pipeline another pipeline's un-promoted candidate list.
 
 **Category C — Fuzzing executor** (Recon Magic + Chimera + Medusa + Echidna): an autonomous
 pipeline that builds property harnesses and grinds them. See

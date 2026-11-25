@@ -12,6 +12,8 @@ DEPENDENCIES: {{dependencies}}              # vendored libs + their pinned versi
 CONFIGURATION: {{configuration}}             # compiler/flags from foundry.toml; live deployment facts
 WORKSPACE: out/{slug}/fuzzing/target-work/  # or src/ - where to READ code
 KB: out/{slug}/kb/{functions.csv, dependency-map.md, access-control.md, invariants.md, kritt.md}
+HANDOFF: out/{slug}/handoff/{submitted-findings.md, known-issues.md, prior-audits/}  # read before work; dedup before promotion
+PROGRESS: out/{slug}/reports/{{agent}}.progress.json                                # resume checkpoint
 ```
 
 Rules:
@@ -21,3 +23,9 @@ Rules:
 3. For multi-repo targets: pass each repo's own pin (mirrors their workspace_manifest_json).
 4. `{{extra.*}}` equivalent: run-specific operator notes ride in the same block, not scattered
    across prompts.
+5. Resume before work: if `PROGRESS` shows completed unit keys, continue from the first unfinished
+   key - never restart from scratch after an API / network / process failure (see
+   [../subagent-protocol.md](../subagent-protocol.md) §2).
+6. Incremental writes only: append each settled finding / kritt-row flip immediately, then update
+   `PROGRESS`. Before promoting a candidate, dedup it against `HANDOFF` - a dup is logged as
+   `dup-of:<id>`, never re-promoted.
