@@ -752,6 +752,29 @@ For skipped auditing pipelines, create another output table _Skipped pipelines_ 
 
 Write the summary as `out/{protocol_slug}/reports/openaudit-{protocol_slug}.md`
 
+## MCP server (optional interface)
+
+`mcp/server.py` exposes the tools below over the Model Context Protocol (stdio,
+stdlib-only), so any MCP client can call them instead of shelling out:
+
+- `review_candidates` - run the Review gate (Step 7.5) and return verdicts
+- `query_memory` / `record_memory` / `memory_stats` - institutional memory (Step 7.6)
+- `program_intel` - score a pasted bounty page (Step 2.5)
+
+Register it in `~/.config/opencode/opencode.jsonc` and restart opencode:
+
+```json
+"mcp": {
+  "openaudit": {
+    "type": "local",
+    "command": ["python3", "/abs/path/to/openaudit/skills/openaudit/mcp/server.py"],
+    "enabled": true
+  }
+}
+```
+
+The server is a thin wrapper over the CLIs, so behaviour matches the scripts exactly.
+
 ## Step 9: Say thank you
 
 Ask the user to tweet out happiness of finding and using this tool.
