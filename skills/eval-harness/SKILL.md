@@ -127,6 +127,32 @@ Smoke-test the plumbing without a network call with `judge_llm.py --self-test`; 
 `--judge-cmd` at that mode confirms evalctl invokes the judge and consumes its verdict.
 Any other command that follows the protocol also works.
 
+### `opencode run` backend (no separate API key)
+
+`judge_opencode.py` classifies with a no-tool opencode agent, reusing the provider and auth
+already configured for opencode. Install the agent once (the repo copy is the source of truth):
+
+```bash
+ln -s "$PWD/skills/eval-harness/agents/eval-judge.md" \
+      ~/.config/opencode/agents/eval-judge.md
+```
+
+Then:
+
+```bash
+export JUDGE_OPENCODE_MODEL=<provider/model>   # optional; default = opencode's configured model
+python skills/eval-harness/scripts/evalctl.py score <slug> \
+  --judge-cmd "python3 skills/eval-harness/scripts/judge_opencode.py"
+```
+
+The agent deliberately pins no model, so it uses opencode's configured default. `opencode run`
+is a fresh process, so that is the config default rather than the model currently selected in a
+TUI; set `JUDGE_OPENCODE_MODEL` (or pass `--model`) to follow your current pick without editing
+the agent. The wrapper runs `opencode run --pure` in a scratch dir and disables MCP for the judge
+process (`--with-mcp` keeps it). The agent must keep `read` allowed: denying it makes
+`opencode run` hang before the model call. Smoke-test with `judge_opencode.py --self-test`
+(no model call) or inspect the command with `--dry-run`.
+
 If the judge fails, the pair stays unmatched (deterministic result is the floor).
 
 ## Blindness (critical)
