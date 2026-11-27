@@ -51,3 +51,6 @@ skills/disclosed-findings-corpus/data/*/
 # eval-harness: cloned contests, answer keys, scorecards (regenerate with evalctl.py)
 eval-runs/
 skills/eval-harness/**/__pycache__/
+
+# ItyFuzz
+work_dir/

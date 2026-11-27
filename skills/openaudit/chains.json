@@ -1,0 +1,155 @@
+{
+  "_comment": "Chain registry for address_intake.py and onchain_fuzz.sh. Add any EVM chain: rpc_env is the env var holding the RPC URL. Source/log backends are tried in order: sourcify, etherscan (v2), blockscout; rpc_logs uses eth_getLogs via cast. forge_clone is the Foundry chain name (null = unsupported). ityfuzz is the ItyFuzz -c name (null = use anvil fork + local).",
+  "1": {
+    "name": "ethereum",
+    "rpc_env": "JSON_RPC_ETHEREUM",
+    "sourcify": true,
+    "etherscan": true,
+    "blockscout": null,
+    "rpc_logs": false,
+    "forge_clone": "mainnet",
+    "ityfuzz": "eth"
+  },
+  "10": {
+    "name": "optimism",
+    "rpc_env": "JSON_RPC_OPTIMISM",
+    "sourcify": true,
+    "etherscan": true,
+    "blockscout": null,
+    "rpc_logs": false,
+    "forge_clone": "optimism",
+    "ityfuzz": "optimism"
+  },
+  "56": {
+    "name": "bsc",
+    "rpc_env": "JSON_RPC_BSC",
+    "sourcify": true,
+    "etherscan": true,
+    "blockscout": null,
+    "rpc_logs": false,
+    "forge_clone": "bsc",
+    "ityfuzz": "bsc"
+  },
+  "100": {
+    "name": "gnosis",
+    "rpc_env": "JSON_RPC_GNOSIS",
+    "sourcify": true,
+    "etherscan": true,
+    "blockscout": null,
+    "rpc_logs": false,
+    "forge_clone": null,
+    "ityfuzz": "gnosis"
+  },
+  "137": {
+    "name": "polygon",
+    "rpc_env": "JSON_RPC_POLYGON",
+    "sourcify": true,
+    "etherscan": true,
+    "blockscout": null,
+    "rpc_logs": false,
+    "forge_clone": "polygon",
+    "ityfuzz": "polygon"
+  },
+  "324": {
+    "name": "zksync",
+    "rpc_env": "JSON_RPC_ZKSYNC",
+    "sourcify": true,
+    "etherscan": true,
+    "blockscout": null,
+    "rpc_logs": false,
+    "forge_clone": null,
+    "ityfuzz": "zkevm"
+  },
+  "8453": {
+    "name": "base",
+    "rpc_env": "JSON_RPC_BASE",
+    "sourcify": true,
+    "etherscan": true,
+    "blockscout": null,
+    "rpc_logs": false,
+    "forge_clone": "base",
+    "ityfuzz": "base"
+  },
+  "42161": {
+    "name": "arbitrum",
+    "rpc_env": "JSON_RPC_ARBITRUM",
+    "sourcify": true,
+    "etherscan": true,
+    "blockscout": null,
+    "rpc_logs": false,
+    "forge_clone": "arbitrum",
+    "ityfuzz": "arbitrum"
+  },
+  "43114": {
+    "name": "avalanche",
+    "rpc_env": "JSON_RPC_AVALANCHE",
+    "sourcify": true,
+    "etherscan": true,
+    "blockscout": null,
+    "rpc_logs": false,
+    "forge_clone": "avalanche",
+    "ityfuzz": "avalanche"
+  },
+  "59144": {
+    "name": "linea",
+    "rpc_env": "JSON_RPC_LINEA",
+    "sourcify": true,
+    "etherscan": true,
+    "blockscout": null,
+    "rpc_logs": false,
+    "forge_clone": null,
+    "ityfuzz": null
+  },
+  "534352": {
+    "name": "scroll",
+    "rpc_env": "JSON_RPC_SCROLL",
+    "sourcify": true,
+    "etherscan": true,
+    "blockscout": null,
+    "rpc_logs": false,
+    "forge_clone": null,
+    "ityfuzz": null
+  },
+  "81457": {
+    "name": "blast",
+    "rpc_env": "JSON_RPC_BLAST",
+    "sourcify": true,
+    "etherscan": true,
+    "blockscout": null,
+    "rpc_logs": false,
+    "forge_clone": null,
+    "ityfuzz": "blast"
+  },
+  "11155111": {
+    "name": "sepolia",
+    "rpc_env": "JSON_RPC_SEPOLIA",
+    "sourcify": true,
+    "etherscan": true,
+    "blockscout": null,
+    "rpc_logs": false,
+    "forge_clone": "sepolia",
+    "ityfuzz": "sepolia"
+  },
+  "4663": {
+    "name": "robinhood",
+    "rpc_env": "JSON_RPC_ROBINHOOD",
+    "sourcify": false,
+    "etherscan": false,
+    "blockscout": "https://robinhoodchain.blockscout.com",
+    "rpc_logs": true,
+    "forge_clone": null,
+    "ityfuzz": null,
+    "public_rpc": "https://rpc.mainnet.chain.robinhood.com"
+  },
+  "46630": {
+    "name": "robinhood-testnet",
+    "rpc_env": "JSON_RPC_ROBINHOOD_TESTNET",
+    "sourcify": false,
+    "etherscan": false,
+    "blockscout": "https://explorer.testnet.chain.robinhood.com",
+    "rpc_logs": true,
+    "forge_clone": null,
+    "ityfuzz": null,
+    "public_rpc": "https://rpc.testnet.chain.robinhood.com"
+  }
+}

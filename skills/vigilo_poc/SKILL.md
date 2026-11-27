@@ -48,7 +48,8 @@ call the deployed address on a fork pinned to a block - never redeploy the targe
 `skills/openaudit/templates/fork/ForkBase.t.sol` or start `setUp()` with
 `vm.createSelectFork(vm.envString("JSON_RPC_ETHEREUM"), <block>)` and assert the fork, chain id,
 block and target code before the attack. A local deploy is valid only when the target has no
-deployment. Full procedure: `skills/openaudit/address-audit.md`.
+deployment. Recover addresses/source with `skills/openaudit/scripts/address_intake.py` and diff
+bytecode selectors with `scripts/selector_diff.py`. Full procedure: `skills/openaudit/address-audit.md`.
 
 ```solidity
 // SPDX-License-Identifier: MIT

@@ -134,6 +134,13 @@ this check is not ground truth. If nothing is verified, decompile (`evmole`/`hei
 evidence boundary `decompiled`. Resolve proxies before downloading: EIP-1967 implementation/admin/
 beacon slots, EIP-1822 PROXIABLE, EIP-1167 minimal proxies, and EIP-2535 `facets()`.
 
+Automate it with `python3 skills/openaudit/scripts/address_intake.py --slug <slug> --chain <id|name>
+--block <snapshot> --address Name=0x...`. It resolves proxies, fetches source/ABI from
+Sourcify/Etherscan/Blockscout, reconstructs roles and upgrade history, and writes `SCOPE.md`,
+`reports/addresses-<slug>.md`, `reports/onchain-facts.json`, `src/`, and `abi/`. Chain coverage is
+`skills/openaudit/chains.json` (any EVM chain; Robinhood 4663 is included). For no-source targets,
+`scripts/selector_diff.py` diffs bytecode selectors against the ABI.
+
 - Get the smart contract name from the blockchain explorer
 - Save all the smart contract source code files to `out/{protocol_slug}/src` folder
 - Save all the ABI files `out/{protocol_slug}/abi` folder
@@ -651,6 +658,12 @@ Full procedure: [fuzzing-pipeline.md](./fuzzing-pipeline.md) "Exploit verificati
 5. Tooling: evmbench scripts from the SolidityGuard LOCAL CLONE (`~/tools/SolidityGuard`,
    proprietary - never committed anywhere; set up in Step 3). If unavailable, replicate the flow
    with anvil + cast directly (fork, fire txs, diff balances).
+
+Optional bounty-mode lead generation: `skills/openaudit/scripts/onchain_fuzz.sh --slug <slug>
+--chain <id|name> --target 0x... --block <pinned> --timeout 600` (ItyFuzz; known chains fork
+directly, any other EVM chain goes through a pinned anvil fork). Install/check with
+`scripts/install-address-tools.sh`. Fuzzing output is leads only - replay every objective as a
+pinned-fork PoC with a balance/invariant delta (items 1-4) before it can be submission-grade.
 
 ### Step 7: Search for existing audit reports
 

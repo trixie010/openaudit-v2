@@ -36,6 +36,18 @@ Record in `out/{slug}/SCOPE.md`: chain, block, each address, role (proxy/impl/to
 whether it is verified. Snapshot block must be >= the deployment block and >= the last upgrade you
 intend to test.
 
+One command does the whole intake (proxy resolution, source ladder, ABI, roles/upgrades):
+
+```bash
+python3 skills/openaudit/scripts/address_intake.py --slug {slug} --chain 1 --block 26469201 \
+  --address Lender=0xf8B349dA9244253288f6853835e6582955FD49c9
+```
+
+It writes `SCOPE.md`, `reports/addresses-{slug}.md`, `reports/onchain-facts.json`, `src/`, `abi/`,
+and `in-scope-files.txt`. Any EVM chain works: add it to `skills/openaudit/chains.json` (RPC env,
+Sourcify/Etherscan/Blockscout, `rpc_logs`, `forge_clone`, `ityfuzz`). Robinhood Chain (4663) ships
+configured.
+
 ## 2. Recover source (in this order)
 
 1. **`forge clone`** — best: full Foundry project + compiler settings + `.clone.meta` (creation tx,
@@ -44,12 +56,17 @@ intend to test.
    forge clone --chain mainnet --implementation 0xADDR out/{slug}/clone
    ```
    `--implementation` resolves the proxy via Etherscan metadata (Etherscan only; not with Sourcify).
-2. **Sourcify** (no key, exact/partial match):
-   `curl "https://sourcify.dev/server/files/any/1/0xADDR"`
+2. **Sourcify v2** (no key, exact/partial match):
+   `curl "https://sourcify.dev/server/v2/contract/1/0xADDR?fields=all"`
+   (the old `/files/any` endpoint now rejects non-browser clients).
 3. **Etherscan API v2** (`chainid=1&module=contract&action=getsourcecode`) — broadest coverage.
-4. **Blockscout** (`https://eth.blockscout.com/api?module=contract&action=getsourcecode`) fallback.
+4. **Blockscout v2** (`GET /api/v2/smart-contracts/0xADDR`) — use for Blockscout-only chains
+   (e.g. Robinhood Chain). `source_code` + `additional_sources` + `abi` + `implementations`.
 5. **No verified source** — decompile and recover the interface (section 3), then test behavior on
    the fork. Label the evidence boundary `decompiled`, never `source`.
+
+`forge clone` needs Foundry support for the chain; on Blockscout-only chains use the explorer API
+or decompile. `address_intake.py` tries the enabled backends from `chains.json` automatically.
 
 **Always check source == deployed bytecode** before trusting it:
 
@@ -78,6 +95,18 @@ storage slot; check `DELEGATECALL`/`SELFDESTRUCT` reachability; decode real call
 `cast tx`/`heimdall decode-calldata`. Decompilers guess names — verify every claim against the
 disassembly, a storage read, or a fork run.
 
+Selector/ABI diff (evmole, falls back to `cast disassemble` dispatch scanning):
+
+```bash
+python3 skills/openaudit/scripts/selector_diff.py --address 0xADDR --chain 1 --block "$BLOCK"
+# or against a recovered ABI:
+python3 skills/openaudit/scripts/selector_diff.py --address 0xADDR --abi out/{slug}/abi/Lender.json
+```
+
+`bytecode_only` is the high-signal list: functions reachable on the deployed contract that the
+verified ABI does not describe (hidden admin paths, stale ABI, proxy/facet mismatch). Check each
+against `4byte.directory` and the disassembly before claiming a backdoor.
+
 ## 4. Proxy and system discovery
 
 Check these slots with `cast storage 0xADDR <slot>`:
@@ -97,6 +126,11 @@ Also enumerate: `owner()`, `pendingOwner()`, `admin()`, `operator()`, `manager()
 `RoleGranted`/`RoleRevoked` logs; list `Upgraded`/`AdminChanged`/`BeaconUpgraded` history; classify
 EOA vs Safe (threshold/owners) vs timelock (`delay()`, `MIN_DELAY`). Save to
 `reports/addresses-{slug}.md` and `reports/onchain-facts.json`.
+
+`address_intake.py` automates this section. Log backends degrade by chain: Etherscan v2 when
+available, otherwise `eth_getLogs` over RPC (`rpc_logs: true`, works on Robinhood), otherwise
+Blockscout v2 (paginated; no server-side topic filter). If all are blocked, roles still show up via
+getters, but grant/revoke history is empty — say so in the report.
 
 Pin the implementation you audited. An implementation upgraded after your block is a different
 target; say which one the PoC exercises.
@@ -167,6 +201,40 @@ at `high-risk`.
 - Assuming testnet behavior equals mainnet (oracles, liquidity, roles, gas, L2 precompiles).
 - Treating a decompiler's guessed names as source truth.
 
+## 9. Onchain fuzzing (bounty mode, optional)
+
+Bytecode-level fuzzing finds paths source review misses. Keep the same rule: fork at the pinned
+block, target the deployed address, never broadcast.
+
+```bash
+# install/check: cast, forge, anvil, evmole, heimdall, ityfuzz (no sudo)
+skills/openaudit/scripts/install-address-tools.sh --check
+
+# known ItyFuzz chain (direct pinned fork)
+skills/openaudit/scripts/onchain_fuzz.sh --slug {slug} --chain 1 \
+  --target 0xADDR --block 26469201 --timeout 600 --flashloan
+
+# any EVM chain (anvil fork + ItyFuzz -c local; tested on Robinhood 4663)
+skills/openaudit/scripts/onchain_fuzz.sh --slug {slug} --chain robinhood \
+  --target 0xADDR --block 123954043 --timeout 600
+```
+
+- The wrapper starts a local `anvil --fork-url <rpc> --fork-block-number <block>` for chains
+  ItyFuzz has no built-in config for, then runs `ityfuzz evm -c local`. The RPC URL is never
+  written to the report.
+- Pinned historical blocks need an **archive** RPC. Robinhood's public endpoint is configured as a
+  fallback for recent blocks; use an Alchemy/provider archive URL for a snapshot that is more than
+  a few hundred blocks old (otherwise `cast code --block` and the anvil fork fail with a missing
+  trie node).
+- `-u/--onchain-url` is broken in the current ItyFuzz nightly (panics on block timestamp); the
+  anvil-fork path is the reliable custom-chain route.
+- **Medusa is harness-only.** `predeployedContracts` maps `contractName -> address` and deploys the
+  compiled artifact at that address; it cannot substitute for a live target. Use
+  `templates/fork/medusa.fork.json` with a harness that forks and calls the deployed address, or
+  use ItyFuzz for address-only work.
+- Fuzzing output is leads, not findings: replay every crash/objective as a pinned-fork PoC with a
+  balance/invariant delta before submission.
+
 ## Sources
 
 - Foundry fork testing: https://www.getfoundry.sh/guides/fork-testing
@@ -175,7 +243,9 @@ at `high-risk`.
 - `forge verify-bytecode`: https://www.getfoundry.sh/reference/forge/verify-bytecode
 - Storage/upgrade rules: https://www.getfoundry.sh/guides/upgrading-contracts
 - Sourcify: https://sourcify.dev/server/ ; Etherscan v2: https://docs.etherscan.io/
+- Blockscout API: https://docs.blockscout.com/for-developers/api
 - evmole: https://github.com/cdump/evmole ; heimdall-rs: https://github.com/Jon-Becker/heimdall-rs
-- ItyFuzz onchain mode: https://docs.ityfuzz.rs/quickstart
-- Medusa fork config: https://book.getrecon.xyz/
+- ItyFuzz onchain mode: https://docs.ityfuzz.rs/quickstart ; install: https://docs.ityfuzz.rs/installation-and-building
+- Medusa fuzzing config: https://github.com/crytic/medusa/blob/master/docs/src/project_configuration/fuzzing_config.md
+- Robinhood Chain (EVM L2, chain 4663): https://docs.robinhood.com/chain/
 - EIP-1967 / EIP-1822 / EIP-1167 / EIP-2535 specifications

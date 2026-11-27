@@ -1,0 +1,46 @@
+{
+  "fuzzing": {
+    "workers": 4,
+    "timeout": 600,
+    "testLimit": 0,
+    "callSequenceLength": 50,
+    "corpusDirectory": "corpus",
+    "coverageEnabled": true,
+    "targetContracts": [],
+    "senderAddresses": [
+      "0x10000",
+      "0x20000"
+    ],
+    "chainConfig": {
+      "codeSizeCheckDisabled": true,
+      "skipAccountChecks": true,
+      "forkConfig": {
+        "forkModeEnabled": true,
+        "rpcUrl": "",
+        "rpcBlock": 0,
+        "poolSize": 20
+      }
+    },
+    "testing": {
+      "stopOnFailedTest": false,
+      "testAllContracts": true,
+      "testViewMethods": true,
+      "assertionTesting": {
+        "enabled": true
+      },
+      "propertyTesting": {
+        "enabled": true,
+        "testPrefixes": [
+          "property_",
+          "invariant_"
+        ]
+      }
+    }
+  },
+  "compilation": {
+    "platform": "crytic-compile",
+    "platformConfig": {
+      "target": "."
+    }
+  }
+}
