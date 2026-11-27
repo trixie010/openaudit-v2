@@ -184,6 +184,23 @@ class FindingsIndex:
         by_id = {r[0]: self._make(r) for r in rows}
         return [by_id[i] for i in ids if i in by_id]
 
+    @staticmethod
+    def _dedupe_hits(hits: list[Finding]) -> list[Finding]:
+        """Keep the best-ranked row per source/protocol/title.
+
+        The corpus sometimes extracts the same finding from a PDF and its
+        markdown twin; without this, top-k burns slots on identical titles.
+        """
+        seen = set()
+        out = []
+        for f in hits:
+            key = (f.source.lower(), (f.protocol_name or "").lower(), f.title.strip().lower())
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(f)
+        return out
+
     def _is_excluded(self, finding: Finding) -> bool:
         pname = (finding.protocol_name or "").lower()
         url = (finding.source_url or "").lower()
@@ -222,17 +239,18 @@ class FindingsIndex:
             if clauses:
                 sql += " AND rowid NOT IN (SELECT id FROM findings WHERE " + " OR ".join(clauses) + ")"
         sql += f" ORDER BY bm25({table}) LIMIT ?"
-        params.append(max(top_k, 1) * 4 if (protocol_filter or self._exclude_protocol or self._exclude_url) else max(top_k, 1))
+        params.append(max(top_k, 1) * 4)
         try:
             ids = [r[0] for r in self._conn.execute(sql, params).fetchall()][:top_k]
         except sqlite3.OperationalError:
             return []
         if self.backend == "fts5-disk":
-            return self._load(ids)[:top_k]
-        hits = [self.findings[i] for i in ids]
-        if self._exclude_protocol or self._exclude_url:
-            hits = [f for f in hits if not self._is_excluded(f)]
-        return hits[:top_k]
+            hits = self._load(ids)
+        else:
+            hits = [self.findings[i] for i in ids]
+            if self._exclude_protocol or self._exclude_url:
+                hits = [f for f in hits if not self._is_excluded(f)]
+        return self._dedupe_hits(hits)[:top_k]
 
     def hint_search(self, query: str, protocol_type: str | None = None, top_k: int = 4) -> list[Finding]:
         pf = ("protocol_type", protocol_type) if protocol_type else None

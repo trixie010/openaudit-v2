@@ -173,10 +173,12 @@ python skills/eval-harness/scripts/corpus_probe.py 2024-06-vultisig \
 
 It writes `<workdir>/corpus_probe.md` + `.json`:
 
+- The default query is title-only (best signal/speed). Add `--body-chars 400` only if you want
+  more context; long answer-key bodies add common-word noise and slow FTS.
 - `gt_with_hits` / `gt_total` = retrieval ceiling, **not** recall. Read the markdown and judge
   whether a hint is actually relevant to the answer-key finding.
-- `leakage_without_exclusions` must be `>0` for a contest that is in the corpus, proving the
-  check is live; the excluded run must report zero same-contest hits.
+- `same_contest_hits_with_exclusions` must be `0`. `leakage_without_exclusions` must be `>0` for
+  a contest that is in the corpus, proving the check is live.
 - The real A/B is still a full blind replay with and without `disclosed-findings-corpus` in the
   pipeline roster, scored with `evalctl.py`. Compare recall (all + High), read-confirmed
   precision, and duplicate count. Do not tune on one contest.

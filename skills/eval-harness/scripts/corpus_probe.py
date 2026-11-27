@@ -72,8 +72,9 @@ def main() -> int:
     ap.add_argument("--workdir", default=None, help="default: eval-runs/<slug>")
     ap.add_argument("--db", default=str(DEFAULT_DB), help="corpus DB")
     ap.add_argument("--top", type=int, default=5)
-    ap.add_argument("--body-chars", type=int, default=2000,
-                    help="GT body chars appended to the query (title is always used)")
+    ap.add_argument("--body-chars", type=int, default=0,
+                    help="GT body chars appended to the query (title is always used; "
+                         "0 = title-only, best signal/speed; long bodies add common-word noise)")
     ap.add_argument("--exclude-protocol", action="append", default=[], metavar="SUBSTRING",
                     help="extra protocol-name exclusion (repeatable)")
     ap.add_argument("--exclude-url", action="append", default=[], metavar="SUBSTRING",
@@ -128,6 +129,9 @@ def main() -> int:
         rows.append(row)
 
     with_hits = sum(1 for row in rows if row["hits"])
+    excluded_same = sum(
+        1 for row in rows for h in row["hits"] if h["same_contest"]
+    )
     leakage_total = sum(len(row["leakage_hits"]) for row in rows)
     payload = {
         "slug": slug,
@@ -138,6 +142,7 @@ def main() -> int:
         "exclude_url": ex_url,
         "gt_total": len(rows),
         "gt_with_hits": with_hits,
+        "same_contest_hits_with_exclusions": excluded_same,
         "leakage_hits_without_exclusions": leakage_total,
         "rows": rows,
     }
@@ -154,6 +159,7 @@ def main() -> int:
         f"- Top-k: {args.top}",
         f"- Excluded protocol substrings: {', '.join(ex_protocol) or '(none)'}",
         f"- Excluded URL substrings: {', '.join(ex_url) or '(none)'}",
+        f"- Same-contest hits in the excluded run: {excluded_same}",
         f"- Same-contest hits without exclusions: {leakage_total}",
         "",
         "| GT | Sev | Top corpus hints |",
@@ -180,8 +186,11 @@ def main() -> int:
         ]
 
     base.with_suffix(".md").write_text("\n".join(md) + "\n", encoding="utf-8")
+    if excluded_same and not args.no_meta_excludes:
+        print("WARNING: exclusions did not remove every same-contest hit", file=sys.stderr)
     print(
         f"gt={len(rows)} with_hits={with_hits} "
+        f"same_contest_with_exclusions={excluded_same} "
         f"leakage_without_exclusions={leakage_total} "
         f"-> {base.with_suffix('.md')}"
     )
