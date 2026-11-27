@@ -25,6 +25,9 @@ Before starting, gather the following information from the user:
 
 1. **Smart contract link on a blockchain explorer** or **smart contract source code repository path**: The link to a smart contract source code on a blockchain explorer.
 2. **Project name** we will use for a working directory and report naming, like _Aave_.
+3. **If only deployed addresses are given (no repo)**: also record the chain, a snapshot block, and
+   the program's testing rule (local fork only, or live testnet allowed). Follow
+   [address-audit.md](./address-audit.md) for source recovery, proxy resolution, and fork-first PoCs.
 
 You are going to require environment variables like `JSON_RPC_ETHEREUM` and `ETHERSCAN_API_KEY` to access blockchain data and APIs. Use Unix source command to read these from `env.sh` file:
 
@@ -121,6 +124,15 @@ Get the list of different audit skill repos from [smart-contract-auditing-skills
 Before performing this step, confirm the pipeline MODE with the user (audit/bounty/full - see Step 5).
 
 ### Step 4.a): Download the deployed and verified source code files
+
+**Address-only targets: follow [address-audit.md](./address-audit.md).** Preferred path is
+`forge clone --chain <chain> --implementation <address> out/{slug}/clone` - it reconstructs a
+compilable project plus `.clone.meta` (creation tx, deployer, constructor args, storage layout).
+Then verify the source matches the deployed bytecode
+(`forge verify-bytecode <address> <path:Contract> --block <snapshot>`); a verified source that fails
+this check is not ground truth. If nothing is verified, decompile (`evmole`/`heimdall`) and mark the
+evidence boundary `decompiled`. Resolve proxies before downloading: EIP-1967 implementation/admin/
+beacon slots, EIP-1822 PROXIABLE, EIP-1167 minimal proxies, and EIP-2535 `facets()`.
 
 - Get the smart contract name from the blockchain explorer
 - Save all the smart contract source code files to `out/{protocol_slug}/src` folder
@@ -574,6 +586,15 @@ For each **Medium or higher** finding from Step 5, produce a self-contained Foun
 demonstrates whether the vulnerability is exploitable. This turns theoretical findings into
 concrete evidence a reviewer can run in seconds.
 
+**DEPLOYED-TARGET RULE (no exceptions):** when the finding concerns a live deployment, the PoC must
+call the deployed address on a fork pinned to a block - it must NOT deploy a fresh copy with mocks.
+Inherit `templates/fork/ForkBase.t.sol` and call `_selectFork("JSON_RPC_ETHEREUM", <chainId>,
+<block>)` in `setUp()`; it fails unless a fork is active, the chain id and block match, and the
+target has code. `forge test --fork-url` without a pinned block is not acceptable. A local redeploy
+is valid only when the target has no deployment. Mocking an oracle/feed is allowed only when the
+finding is about a state the chain can actually reach, and must be disclosed in
+`evidence_boundary`. Full procedure: [address-audit.md](./address-audit.md).
+
 For each finding:
 
 1. **Write a Foundry test file** at `out/{protocol_slug}/tests/{FindingSlug}.t.sol` (or
@@ -617,8 +638,12 @@ deserves the same evidence rigor) that reached referee-CONFIRMED
 with a passing PoC. Cost: minutes per finding; anvil fork ~1GB RAM; exploit runs are seconds.
 Full procedure: [fuzzing-pipeline.md](./fuzzing-pipeline.md) "Exploit verification" section.
 
-1. Start a fork of the deployed protocol: `anvil --fork-url $JSON_RPC_ETHEREUM` (chain state =
-   production). If the target has no live deployment, deploy fresh on local anvil instead.
+1. Start a fork of the deployed protocol pinned to the audited block:
+   `anvil --fork-url $JSON_RPC_ETHEREUM --fork-block-number <block>` (chain state = production).
+   If the target has no live deployment, deploy fresh on local anvil instead. Fork and anvil are
+   local simulation: never broadcast to mainnet. Live-testnet interaction is allowed ONLY when the
+   program explicitly permits it, with accounts/assets you own, and is supporting evidence - the
+   finding must still reproduce on a local mainnet fork when the mainnet deployment is in scope.
 2. Replay the confirmed exploit as real transactions from a funded exploit wallet (cast/forge).
 3. Capture before/after balances of attacker + protocol (balance-delta evidence).
 4. Attach the transaction list + balance deltas to the submission as exploit evidence - stronger
@@ -652,8 +677,12 @@ run the deterministic review gate over the whole candidate queue:
 python templates/review_gate.py --slug {protocol_slug} \
   [--handoff out/{slug}/handoff/] [--prior-audits out/{slug}/prior-audits/] \
   [--impact-ruleset out/{slug}/kb/impact-ruleset.md] [--protocol-name <target>] \
-  [--memory-db ~/.openaudit/memory/findings.db]
+  [--require-fork] [--memory-db ~/.openaudit/memory/findings.db]
 ```
+
+For address-only targets add `--require-fork`: any candidate whose `evidence_boundary` is not
+`fork:<chain>@<block>` is parked at `high-risk`, because a local redeploy or a mock-only test is not
+evidence about the deployed contract.
 
 It cross-checks every candidate against the submitted-findings handoff, prior audits, the
 disclosed corpus (protocol-scoped dedup), intra-run siblings, the institutional-memory store

@@ -243,6 +243,18 @@ def is_poc_backed(status, poc_status):
     return any(m in poc for m in markers) or any(m in st for m in markers)
 
 
+_FORK_RE = re.compile(r"\bfork\b", re.I)
+
+
+def check_fork(c, required):
+    if not required:
+        return []
+    eb = (c["row"].get("evidence_boundary") or "").strip()
+    if _FORK_RE.search(eb):
+        return []
+    return ["fork evidence (evidence_boundary must be fork:<chain>@<block>, not local-run/static)"]
+
+
 def check_evidence(c):
     missing = []
     if not c["file"] or not str(c["line"]).strip():
@@ -271,6 +283,8 @@ def main():
     ap.add_argument("--dup-threshold", type=float, default=0.55)
     ap.add_argument("--known-threshold", type=float, default=0.50)
     ap.add_argument("--intra-threshold", type=float, default=0.85)
+    ap.add_argument("--require-fork", action="store_true",
+                    help="address targets: require evidence_boundary=fork:<chain>@<block>")
     ap.add_argument("--fail-on-blocker", action="store_true")
     args = ap.parse_args()
 
@@ -362,7 +376,7 @@ def main():
                 else:
                     known_refs.append(ref)
 
-        ev_missing = check_evidence(c)
+        ev_missing = check_evidence(c) + check_fork(c, args.require_fork)
         impact_ok, impact_reasons = check_impact(c, ruleset)
         quality_reasons = check_quality(c)
 
@@ -383,7 +397,8 @@ def main():
             reasons += quality_reasons
             fixes.append("show an unprivileged impact/PoC or drop (generic hygiene/admin-config)")
         elif ev_missing:
-            if any(m in ev_missing for m in ("file:line", "trigger path / malicious input")):
+            hard = ("file:line", "trigger path / malicious input", "fork evidence")
+            if any(any(k in m for k in hard) for m in ev_missing):
                 verdict = "high-risk"
             else:
                 verdict = "uncertain"

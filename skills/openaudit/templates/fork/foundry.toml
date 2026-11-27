@@ -1,0 +1,23 @@
+[profile.default]
+src = "src"
+test = "test"
+out = "out"
+libs = ["lib"]
+auto_detect_solc = true
+optimizer = true
+optimizer_runs = 200
+# Address-target PoCs must pin a block. Prefer vm.createSelectFork(rpc, BLOCK) in setUp();
+# this is only the fallback when running the whole suite with --fork-url.
+# fork_block_number = 26472845
+
+# Keep fork tests in their own profile so the fast unit suite never needs an RPC.
+[profile.fork]
+fork_block_number = 26472845
+fork_prefetch = true
+
+[rpc_endpoints]
+mainnet = "${JSON_RPC_ETHEREUM}"
+base = "${JSON_RPC_BASE}"
+arbitrum = "${JSON_RPC_ARBITRUM}"
+optimism = "${JSON_RPC_OPTIMISM}"
+polygon = "${JSON_RPC_POLYGON}"

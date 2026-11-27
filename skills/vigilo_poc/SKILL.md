@@ -43,6 +43,13 @@ Example: `test/poc/H-01-donation-attack-inflated-collateral.t.sol`
 
 **NOTE**: PoC code goes in `test/poc/` (project root), NOT in `.vigilo/` folder.
 
+**Deployed target? Fork-first (mandatory).** If the finding concerns a live deployment, the PoC must
+call the deployed address on a fork pinned to a block - never redeploy the target with mocks. Inherit
+`skills/openaudit/templates/fork/ForkBase.t.sol` or start `setUp()` with
+`vm.createSelectFork(vm.envString("JSON_RPC_ETHEREUM"), <block>)` and assert the fork, chain id,
+block and target code before the attack. A local deploy is valid only when the target has no
+deployment. Full procedure: `skills/openaudit/address-audit.md`.
+
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -69,6 +76,7 @@ contract PoC_{ID}_{BugClass} is Test {
 ### 3. PoC Checklist
 
 - [ ] setUp(): Fully reproduce preconditions
+- [ ] Deployed target: pinned fork, deployed address, no redeploy and no mock-only evidence
 - [ ] Actor labels: Use `makeAddr()` for all addresses
 - [ ] console2.log: Output before/after attack state
 - [ ] Attack steps: Follow scenario order exactly
