@@ -1,6 +1,6 @@
 ---
 name: disclosed-findings-corpus
-description: Ground hypothesis generation against a searchable corpus of past disclosed vulnerability findings (Solodit-aggregated audits, DeFiHackLabs real exploit PoCs, Rekt post-mortems), for protocols where blind-only discovery risks missing known bug patterns. Trigger alongside the other Category B pipelines in Step 5, or when the target uses a common DeFi primitive (vault, AMM, lending, bridge) that past disclosed bugs cover well.
+description: Ground hypothesis generation against a searchable corpus of past disclosed vulnerability findings (Web3 Audit Corpus: C4/Sherlock/Cantina/Spearbit/firm reports, DeFiHackLabs real exploit PoCs, Rekt post-mortems), for protocols where blind-only discovery risks missing known bug patterns. Trigger alongside the other Category B pipelines in Step 5, or when the target uses a common DeFi primitive (vault, AMM, lending, bridge) that past disclosed bugs cover well.
 ---
 
 # disclosed-findings-corpus
@@ -8,9 +8,9 @@ description: Ground hypothesis generation against a searchable corpus of past di
 A Category B pipeline, same tier as pashov/trailofbits/kadenzipfel/etc. - it
 produces a report and answers kritt.md rows exactly like those do. What makes
 this one different: instead of a fixed, author-written checklist, it searches
-a growing corpus of ~thousands of real disclosed findings (Solodit aggregates
-Code4rena, Sherlock, Spearbit, Trail of Bits, OpenZeppelin, Cyfrin) plus real
-exploit PoCs (DeFiHackLabs) and post-mortems (Rekt).
+a growing corpus of ~46,000 real disclosed findings (Web3 Audit Corpus:
+Code4rena, Sherlock, Cantina, Spearbit, Trail of Bits, OpenZeppelin, Cyfrin,
+Pashov and more) plus real exploit PoCs (DeFiHackLabs) and post-mortems (Rekt).
 
 ## Why this runs ALONGSIDE the blind pipelines, not instead of them
 
@@ -42,8 +42,30 @@ python scripts/ingest/ingest_findings.py data/sample_findings.jsonl   # tiny sta
 python scripts/retrieval/index.py                                     # smoke-test FTS5 retrieval
 ```
 
-Build out the real corpus when you have time (each step below is independent -
-skip what you don't have a key for):
+Build the main corpus from the open Web3 Audit Corpus snapshot (no API key):
+
+```bash
+mkdir -p ~/.local/share/openaudit/corpus/web3-audit
+cd ~/.local/share/openaudit/corpus/web3-audit
+curl -L -C - -O https://github.com/DicksonWu654/web3-audit-corpus/releases/latest/download/findings.jsonl.gz
+curl -L -O https://github.com/DicksonWu654/web3-audit-corpus/releases/latest/download/DATA_DICTIONARY.md
+curl -L -O https://github.com/DicksonWu654/web3-audit-corpus/releases/latest/download/LICENSE-DATA.md
+cd -
+
+python scripts/ingest/sources/web3_audit.py
+python scripts/ingest/ingest_findings.py data/web3_audit.jsonl
+```
+
+That keeps EVM-ish High/Medium/Critical findings with usable body text, maps
+`vuln_leaf` to `bug_class`, infers `protocol_type`, and keeps the original
+report URL. Narrow it with `--firms code4rena sherlock cantina spearbit` or
+probe with `--limit 1000`. The raw snapshot is ~97 MB compressed; the SQLite
+DB with FTS is ~800 MB and lives at `data/findings.db` (gitignored). Re-run
+the two scripts after a new release to refresh. Derived metadata is CC BY 4.0;
+finding text stays with the publisher, so keep the URL with every citation.
+The corpus is AI-extracted: verify the linked original before relying on a row.
+
+Optional extra sources (each is independent):
 
 ```bash
 export CYFRIN_API_KEY="..."   # solodit.cyfrin.io -> profile -> API Keys
@@ -52,9 +74,10 @@ python scripts/ingest/sources/defihacklabs.py --since 2023-01 --out data/defihac
 python scripts/ingest/sources/rekt.py --limit 50 --fetch-articles --out data/rekt.jsonl
 ```
 
-**Classify a batch** (the scripts above leave `bug_class`/`protocol_type`/
-`root_cause`/`pattern` empty on purpose - that's your reasoning, not a second
-API call from inside the script): read a batch of the output JSONL, and for
+**Classify a batch** (the Solodit/DeFiHackLabs/Rekt scripts leave
+`bug_class`/`protocol_type`/`root_cause`/`pattern` empty on purpose - that's
+your reasoning, not a second API call from inside the script; the Web3 Audit
+adapter fills them from the corpus metadata and body text): read a batch of the output JSONL, and for
 DeFiHackLabs records use `poc_source` (the real exploit code), for Rekt
 records use `_article_text` - infer and fill in the schema fields yourself,
 write the completed JSONL, then:
@@ -65,6 +88,16 @@ This is slow to do exhaustively (900+ DeFiHackLabs files, ~330 Rekt entries) -
 classify a relevant slice (matching the target's protocol type) rather than
 everything, and re-run as you classify more over time; `ingest_findings.py`
 is append-only, so partial batches accumulate.
+
+**Blind-eval note:** when replaying a contest, do not query this corpus for
+that contest/firm during discovery. Exclude it (`--firms` on ingest, or a
+separate DB) until `candidates.csv` is written, otherwise recall is
+contaminated. The corpus is for Step 5's parallel Category B pass and Step 7
+dedup, not for the blind discovery run.
+
+**Refresh:** `web3_audit.py` reads the release file and writes a filtered
+JSONL; `ingest_findings.py` appends by `finding_uid` and rebuilds the on-disk
+FTS tables (`hint_fts`, `dedup_fts`). Queries are milliseconds after that.
 
 ## Running this pipeline on a target
 
@@ -134,3 +167,7 @@ search, add it as a separate opt-in module rather than making it the default.
   ~75-86% header-parse coverage depending on date range; `poc_source` (the
   actual exploit code) is kept for every file regardless of header-parse
   success.
+- `scripts/ingest/sources/web3_audit.py`: the release is AI-assisted
+  extraction/classification with measured error rates; some publisher bodies
+  are withheld. Every row keeps `source_url`, and `as_dedup_record()` prints
+  it. A corpus hit is a hint, never a finding.

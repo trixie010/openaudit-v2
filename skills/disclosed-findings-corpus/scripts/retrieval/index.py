@@ -41,24 +41,33 @@ class Finding:
     fix: str
     protocol_name: str = ""
     poc_source: str = ""
+    body_text: str = ""
+    source_url: str = ""
+    source_id: str = ""
 
     def as_hint(self) -> str:
         """Abstract pattern view - used for hint_search results, deliberately omits
         anything that would let the model just restate the source instead of
         reasoning about the target's own code."""
+        body = (self.root_cause or self.body_text).strip()
+        if len(body) > 900:
+            body = body[:900].rsplit(" ", 1)[0] + " ..."
         return (
             f"[{self.severity.upper()}] {self.bug_class} ({self.source}, {self.protocol_type})\n"
-            f"Pattern: {self.pattern}\n"
-            f"Root cause: {self.root_cause}\n"
+            f"Pattern: {self.pattern or self.title}\n"
+            f"Root cause: {body}\n"
             f"Preconditions: {self.preconditions}"
         )
 
     def as_dedup_record(self) -> str:
         """Specific-match view - used for dedup_search results."""
-        return (
+        text = (
             f"{self.title} ({self.source}{', ' + self.protocol_name if self.protocol_name else ''}) "
             f"[{self.severity.upper()}] {self.bug_class}: {self.root_cause}"
         )
+        if self.source_url:
+            text += f"\n{self.source_url}"
+        return text
 
 
 def _fts_query(text: str) -> str:
@@ -87,29 +96,37 @@ class FindingsIndex:
         if not cols:
             src.close()
             raise RuntimeError(f"{db_path} has no `findings` table; re-run ingest_findings.py.")
-        has_protocol_name = "protocol_name" in cols
-        has_poc_source = "poc_source" in cols
-        select_cols = "id, source, protocol_type, bug_class, title, root_cause, pattern, preconditions, severity, fix"
-        if has_protocol_name:
-            select_cols += ", protocol_name"
-        if has_poc_source:
-            select_cols += ", poc_source"
-        rows = src.execute(f"SELECT {select_cols} FROM findings").fetchall()
+        self._optional = ("protocol_name", "poc_source", "body_text", "source_url", "source_id")
+        self._present = {col: col in cols for col in self._optional}
+        self._select_cols = (
+            "id, source, protocol_type, bug_class, title, root_cause, pattern, "
+            "preconditions, severity, fix"
+        )
+        for col in self._optional:
+            if self._present[col]:
+                self._select_cols += f", {col}"
+        self._db_path = db_path
+        self._count = 0
+
+        tables = {r[0] for r in src.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "hint_fts" in tables and "dedup_fts" in tables:
+            n = src.execute("SELECT count(*) FROM hint_fts").fetchone()[0]
+            if n:
+                self.backend = "fts5-disk"
+                self._conn = src
+                self._count = src.execute("SELECT count(*) FROM findings").fetchone()[0]
+                self.findings = []
+                return
+
+        rows = src.execute(f"SELECT {self._select_cols} FROM findings").fetchall()
         src.close()
-
-        def _make(row):
-            row = list(row)
-            if not has_protocol_name:
-                row.append("")
-            if not has_poc_source:
-                row.append("")
-            return Finding(*row)
-
-        self.findings: list[Finding] = [_make(r) for r in rows]
+        self.findings = [self._make(r) for r in rows]
+        self._count = len(self.findings)
         if not self.findings:
             raise RuntimeError(f"No findings in {db_path}. Run ingest/ingest_findings.py first.")
 
-        # Build two in-memory FTS5 tables, rowid == position in self.findings.
         self.backend = "fts5"
         self._conn = sqlite3.connect(":memory:")
         try:
@@ -124,17 +141,36 @@ class FindingsIndex:
         hint_rows = [
             (
                 i,
-                f"{f.bug_class} {f.protocol_type} {f.title} {f.root_cause} {f.pattern} {f.preconditions}",
+                f"{f.bug_class} {f.protocol_type} {f.title} {f.root_cause} "
+                f"{f.pattern} {f.preconditions} {f.body_text[:6000]}",
                 f.protocol_type or "",
             )
             for i, f in enumerate(self.findings)
         ]
         dedup_rows = [
-            (i, f"{f.title} {f.protocol_name} {f.root_cause}", f.protocol_name or "")
+            (i, f"{f.title} {f.protocol_name} {f.root_cause} {f.body_text[:4000]}",
+             f.protocol_name or "")
             for i, f in enumerate(self.findings)
         ]
         self._conn.executemany("INSERT INTO hint_fts(rowid, body, protocol_type) VALUES (?,?,?)", hint_rows)
         self._conn.executemany("INSERT INTO dedup_fts(rowid, body, protocol_name) VALUES (?,?,?)", dedup_rows)
+
+    def _make(self, row):
+        row = list(row)
+        for col in self._optional:
+            if not self._present[col]:
+                row.append("")
+        return Finding(*row)
+
+    def _load(self, ids):
+        if not ids:
+            return []
+        placeholders = ",".join("?" for _ in ids)
+        rows = self._conn.execute(
+            f"SELECT {self._select_cols} FROM findings WHERE id IN ({placeholders})", ids
+        ).fetchall()
+        by_id = {r[0]: self._make(r) for r in rows}
+        return [by_id[i] for i in ids if i in by_id]
 
     def _search(self, query: str, mode: str, protocol_filter: tuple[str, str] | None, top_k: int) -> list[Finding]:
         match = _fts_query(query)
@@ -147,15 +183,21 @@ class FindingsIndex:
         if protocol_filter:
             field, value = protocol_filter
             if field == col and value:
-                sql += f" AND {col} = ?"
-                params.append(value)
+                if mode == "dedup":
+                    sql += f" AND lower({col}) LIKE ?"
+                    params.append(f"%{value.lower()}%")
+                else:
+                    sql += f" AND {col} = ?"
+                    params.append(value)
         sql += f" ORDER BY bm25({table}) LIMIT ?"
         params.append(max(top_k, 1) * 4 if protocol_filter else max(top_k, 1))
         try:
-            ids = [r[0] for r in self._conn.execute(sql, params).fetchall()]
+            ids = [r[0] for r in self._conn.execute(sql, params).fetchall()][:top_k]
         except sqlite3.OperationalError:
             return []
-        return [self.findings[i] for i in ids[:top_k]]
+        if self.backend == "fts5-disk":
+            return self._load(ids)
+        return [self.findings[i] for i in ids]
 
     def hint_search(self, query: str, protocol_type: str | None = None, top_k: int = 4) -> list[Finding]:
         pf = ("protocol_type", protocol_type) if protocol_type else None
@@ -168,7 +210,8 @@ class FindingsIndex:
 
 if __name__ == "__main__":
     idx = FindingsIndex()
-    print(f"backend: {idx.backend} ({len(idx.findings)} findings)")
+    count = getattr(idx, "_count", len(idx.findings))
+    print(f"backend: {idx.backend} ({count} findings)")
     for f in idx.hint_search("reward accounting rounding truncation on stake", top_k=3):
         print(f.as_hint())
         print("---")

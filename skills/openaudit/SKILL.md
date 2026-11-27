@@ -306,7 +306,9 @@ burnable/pausable/caps/fees/roles/upgradeability), (c) branch parity (alternate/
 branches must keep the main path's remainder/fee/validation invariants), and (d) dual
 set-membership (approve/disapprove, allow/deny, add/remove must reject the opposite membership
 and be idempotent). They are cheap and repeatedly produce contest findings that coding-only
-review misses.
+review misses. Accounting-heavy targets (vault, AMM, lending, staking, bridge,
+escrow) should also run Pipeline 8.6's accounting-first money-map pass and write
+`out/{slug}/reports/accounting-first.md`.
 
 The skill repos are in `deps/`. There are three categories of pipelines:
 

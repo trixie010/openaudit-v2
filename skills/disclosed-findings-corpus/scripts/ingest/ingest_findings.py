@@ -48,14 +48,51 @@ CREATE TABLE IF NOT EXISTS findings (
     fix TEXT,
     protocol_name TEXT,
     poc_source TEXT,
+    body_text TEXT,
+    source_url TEXT,
+    source_id TEXT,
     raw_json TEXT
 );
 """
 
 
-def ingest(paths: list[str]) -> int:
-    conn = sqlite3.connect(DB_PATH)
+def _rebuild_fts(conn: sqlite3.Connection) -> None:
+    conn.execute("DROP TABLE IF EXISTS hint_fts")
+    conn.execute("DROP TABLE IF EXISTS dedup_fts")
+    conn.execute("CREATE VIRTUAL TABLE hint_fts USING fts5(body, protocol_type UNINDEXED)")
+    conn.execute("CREATE VIRTUAL TABLE dedup_fts USING fts5(body, protocol_name UNINDEXED)")
+    rows = conn.execute(
+        """SELECT id, protocol_type, bug_class, title, root_cause, pattern,
+                  preconditions, protocol_name, body_text
+           FROM findings"""
+    ).fetchall()
+    hint_rows = []
+    dedup_rows = []
+    for rid, ptype, bclass, title, root, pattern, pre, pname, body in rows:
+        hint_rows.append((
+            rid,
+            f"{bclass or ''} {ptype or ''} {title or ''} {root or ''} "
+            f"{pattern or ''} {pre or ''} {(body or '')[:6000]}",
+            ptype or "",
+        ))
+        dedup_rows.append((
+            rid,
+            f"{title or ''} {pname or ''} {root or ''} {(body or '')[:4000]}",
+            pname or "",
+        ))
+    conn.executemany("INSERT INTO hint_fts(rowid, body, protocol_type) VALUES (?,?,?)", hint_rows)
+    conn.executemany("INSERT INTO dedup_fts(rowid, body, protocol_name) VALUES (?,?,?)", dedup_rows)
+    conn.commit()
+
+
+def ingest(paths: list[str], db_path: Path = DB_PATH) -> int:
+    conn = sqlite3.connect(db_path)
     conn.execute(SCHEMA)
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(findings)").fetchall()}
+    for col in ("body_text", "source_url", "source_id"):
+        if col not in cols:
+            conn.execute(f"ALTER TABLE findings ADD COLUMN {col} TEXT")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_findings_source_id ON findings(source_id)")
     count = 0
     skipped = 0
     for path in paths:
@@ -70,19 +107,26 @@ def ingest(paths: list[str]) -> int:
                     print(f"  skip {path}:{line_no} - bad json ({e})")
                     continue
                 # Append-only DB, but re-ingesting the same file must not duplicate.
-                # Identity = source + title + root_cause (stable across re-runs).
-                exists = conn.execute(
-                    "SELECT 1 FROM findings WHERE source IS ? AND title IS ? AND root_cause IS ? LIMIT 1",
-                    (rec.get("source"), rec.get("title"), rec.get("root_cause")),
-                ).fetchone()
+                # Prefer the source's stable id; fall back to source + title + root_cause.
+                source_id = rec.get("source_id") or None
+                if source_id:
+                    exists = conn.execute(
+                        "SELECT 1 FROM findings WHERE source_id IS ? LIMIT 1", (source_id,)
+                    ).fetchone()
+                else:
+                    exists = conn.execute(
+                        "SELECT 1 FROM findings WHERE source IS ? AND title IS ? AND root_cause IS ? LIMIT 1",
+                        (rec.get("source"), rec.get("title"), rec.get("root_cause")),
+                    ).fetchone()
                 if exists:
                     skipped += 1
                     continue
                 conn.execute(
                     """INSERT INTO findings
                        (source, protocol_type, bug_class, title, root_cause,
-                        pattern, preconditions, severity, fix, protocol_name, poc_source, raw_json)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        pattern, preconditions, severity, fix, protocol_name, poc_source,
+                        body_text, source_url, source_id, raw_json)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (
                         rec.get("source"),
                         rec.get("protocol_type"),
@@ -95,10 +139,14 @@ def ingest(paths: list[str]) -> int:
                         rec.get("fix"),
                         rec.get("protocol_name", ""),
                         rec.get("poc_source", ""),
-                        json.dumps(rec),
+                        rec.get("body_text", ""),
+                        rec.get("source_url", ""),
+                        source_id,
+                        json.dumps({k: v for k, v in rec.items() if k != "body_text"}),
                     ),
                 )
                 count += 1
+    _rebuild_fts(conn)
     conn.commit()
     conn.close()
     if skipped:
@@ -107,8 +155,11 @@ def ingest(paths: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("usage: python ingest_findings.py file1.jsonl [file2.jsonl ...]")
-        sys.exit(1)
-    n = ingest(sys.argv[1:])
-    print(f"Ingested {n} findings into {DB_PATH}")
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("files", nargs="+")
+    ap.add_argument("--db", default=str(DB_PATH))
+    args = ap.parse_args()
+    db_path = Path(args.db)
+    n = ingest(args.files, db_path)
+    print(f"Ingested {n} findings into {db_path}")

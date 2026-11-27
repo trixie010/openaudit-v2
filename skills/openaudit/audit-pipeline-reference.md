@@ -234,6 +234,29 @@ type; they are independent of the AI checklists. Write results to
    removing must not leave a stale entry that still counts. Tally bugs here silently let one
    actor count in both camps or double-count after a delete/re-propose.
 
+### Pipeline 8.6: Accounting-first pass (optional, high leverage)
+Adapted from 0xSimao's `evm-cortex` (MIT) - <https://github.com/0xSimao/evm-cortex>.
+Run when the target tracks user balances/shares/debt or holds pooled assets (vault, AMM,
+lending, staking, bridge, escrow). It targets the class line-by-line review misses: value
+that can leave without the matching total update.
+
+1. **Money map.** List every asset sink/source, every tracked total (`totalAssets`,
+   `totalSupply`, `totalDebt`, reserves), every per-user balance/shares/debt, and every
+   function that changes them.
+2. **Asymmetry table.** For each path (deposit/withdraw/mint/burn/borrow/repay/liquidate/
+   swap/claim), record which totals increase vs decrease. Flag any path where value can
+   enter/leave without a matching write, or where a write is skipped on a branch.
+3. **Invariants.** State the solvency/sum invariants (e.g. `sum(userShares) == totalShares`,
+   `assets >= liabilities`, share price monotonic except yield/fees) and test each with the
+   smallest deposit/withdraw/donation sequence that could break it.
+4. **Cohort / Last User Out.** Model two users with different entry times; if an early user
+   can withdraw more than they put in while a later user is left with a loss, that is the
+   exploit shape. Check donation, direct transfer, fee-on-transfer, and rebasing behavior.
+5. **Rounding direction.** For every division/multiplication, check the direction favors the
+   protocol, not the user, and that a zero/1-wei state cannot be weaponized.
+
+Write `{output_dir}/accounting-first.md` with one row per path and the invariant it can break.
+
 ### Pipeline 9: Trail of Bits Skills (AI + tools)
 - **Repo**: `deps/trailofbits-skills/`
 - **Type**: Category A+B — mixed
