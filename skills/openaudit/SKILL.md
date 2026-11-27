@@ -310,7 +310,9 @@ review misses. Accounting-heavy targets (vault, AMM, lending, staking, bridge,
 escrow) should also run Pipeline 8.6's accounting-first money-map pass and write
 `out/{slug}/reports/accounting-first.md`.
 
-The skill repos are in `deps/`. There are three categories of pipelines:
+Most skill repos are in `deps/`; local additions live under `skills/`
+(`disclosed-findings-corpus`, `vigilo_poc`, `vigilo_report`, `target-intel`).
+There are three categories of pipelines:
 
 **SUBAGENT RESUMABILITY (mandatory)**: every spawned subagent follows
 [subagent-protocol.md](./subagent-protocol.md) - file-first checkpoints, resume-before-work,
@@ -401,7 +403,9 @@ re-adding. If the agent dies on an API error / network drop / process kill, rela
 resume directive and continue from the first unfinished key; write `## RESUME {ts} from {key}` at
 the top of the next append. Completed work is NEVER re-derived.
 
-1. Read the skill's SKILL.md (or README.md) in `deps/{skill_repo_name}/`
+1. Read the skill's SKILL.md (or README.md) in `deps/{skill_repo_name}/`, or the
+   local path given in [audit-pipeline-reference.md](./audit-pipeline-reference.md) for
+   local additions such as `disclosed-findings-corpus`
 2. Read any referenced vulnerability databases, checklists, or attack vector files
 3. Systematically analyze the downloaded source code against those patterns
 4. Write findings to `out/{protocol_slug}/reports/{skill_repo_name}.md` - INCREMENTALLY, one
@@ -677,8 +681,9 @@ Feed prior-audit material ONLY into the dup-risk axis and author-reply columns.
 - Run parallel agents to search and read through
 - **Corpus dedup**: also query the disclosed-findings corpus at this stage only —
   `FindingsIndex().dedup_search(finding_statement, protocol_name="<target>")` from
-  `skills/disclosed-findings-corpus/` (exact-match scoped to the same protocol). Like prior-audit
-  material, it feeds only the `dup_risk` column; never call it during Step 5 discovery
+  `skills/disclosed-findings-corpus/` (protocol-name substring scoped, so `Tornado` also
+  matches `Tornado.Cash`). Like prior-audit material, it feeds only the `dup_risk` column;
+  never call it during Step 5 discovery. If the DB is missing, build it per that skill's Setup
 - Prior-audit material feeds the `dup_risk` / author-reply columns at CONFIRM/REPORT time only -
   it never enters discovery prompts (blind-discovery rule above); "false positive" calls come
   from evidence and refutation, not from reading someone else's known-issues list

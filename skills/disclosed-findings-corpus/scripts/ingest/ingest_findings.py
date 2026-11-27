@@ -15,7 +15,7 @@ Input: a .jsonl file, one finding per line, with this schema:
   "severity": "critical" | "high" | "medium" | "low",
   "fix": "the standard fix",
   "protocol_name": "optional - the actual protocol this was found in, used only for
-                     dedup_search's exact-match scope, not for hint_search"
+                     dedup_search's protocol-name substring scope, not for hint_search"
 }
 
 Usage:

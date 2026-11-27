@@ -4,7 +4,7 @@
 Hint search (discovery, one Category B pipeline's angle - pattern grounding):
   python scripts/retrieval/query.py "first depositor share inflation vault" --protocol-type vault --top 3
 
-Dedup search (confirm-time ONLY, exact scope to the same protocol):
+Dedup search (confirm-time ONLY, protocol-name substring scope):
   python scripts/retrieval/query.py "cross-chain message replay" --dedup --protocol-name MyProto --top 5
 
 Zero third-party deps: retrieval is SQLite FTS5 from the stdlib.
@@ -22,7 +22,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Query the disclosed-findings corpus.")
     ap.add_argument("query", help="free-text description of the code behaviour / bug shape")
     ap.add_argument("--protocol-type", default=None, help="hint filter: lending|amm|vault|staking|bridge|...")
-    ap.add_argument("--protocol-name", default=None, help="dedup filter: exact target protocol name")
+    ap.add_argument("--protocol-name", default=None, help="dedup filter: target protocol name (substring; e.g. Tornado hits Tornado.Cash)")
     ap.add_argument("--dedup", action="store_true", help="use dedup_search (confirm-time) instead of hint_search")
     ap.add_argument("--top", type=int, default=3)
     ap.add_argument("--db", default=None, help="path to findings.db (default: skill data/findings.db)")

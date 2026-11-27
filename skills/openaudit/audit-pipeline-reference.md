@@ -306,7 +306,8 @@ Write `{output_dir}/accounting-first.md` with one row per path and the invariant
   4. Write findings to `out/{protocol_slug}/reports/disclosed-findings-corpus.md`, and record
      which retrieved finding (title + source) grounded each one
 - **Dedup use is separate** (Step 7 / confirm time): `python scripts/retrieval/query.py "<finding>" --dedup --protocol-name "<target>"`
-  is exact-match scoped to the same protocol — never call it during Step 5 discovery (blind rule)
+  uses a protocol-name substring scope (so `Tornado` matches `Tornado.Cash`) — never call it
+  during Step 5 discovery (blind rule)
 - **Why alongside the blind pipelines, not instead**: it is an ADDITIONAL vote, same tier as
   pashov/kadenzipfel/forefy — let Step 5.5's referee weigh it with the rest
 - **Output**: `{output_dir}/disclosed-findings-corpus.md`

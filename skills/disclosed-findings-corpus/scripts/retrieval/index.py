@@ -6,10 +6,11 @@ same operation run twice, they answer different questions:
   Used at ledger-answering time, scoped by protocol_type, to ground a
   HYPOTHESIS attempt. Abstract/pattern-level matching.
 
-- dedup_search(): "has this exact finding, on this protocol (or its fork
-  lineage / forked-from codebase), already been disclosed?" Used at
-  confirm-time on a HYPOTHESIS that passed its PoC, scoped by protocol name/
-  source if known. Exact/specific matching - this is what sets dup_risk.
+- dedup_search(): "has this finding, on this protocol (or its fork lineage /
+  forked-from codebase), already been disclosed?" Used at confirm-time on a
+  HYPOTHESIS that passed its PoC, scoped by protocol name/source if known.
+  Finding text is exact/specific; protocol_name is a substring filter (so
+  "Tornado" also matches "Tornado.Cash"). This is what sets dup_risk.
 
 Backend: SQLite FTS5 (bm25 ranking), which ships with Python's stdlib sqlite3 -
 ZERO third-party dependencies. No sklearn/scipy/numpy, no embeddings API, no

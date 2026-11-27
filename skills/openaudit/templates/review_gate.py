@@ -277,7 +277,8 @@ def main():
     ap.add_argument("--impact-ruleset", default=None, help="default: out/{slug}/kb/impact-ruleset.md")
     ap.add_argument("--corpus-db", default=str(
         Path(__file__).resolve().parents[2] / "disclosed-findings-corpus" / "data" / "findings.db"))
-    ap.add_argument("--protocol-name", default=None, help="corpus dedup filter (exact protocol name)")
+    ap.add_argument("--protocol-name", default=None,
+                    help="corpus dedup filter (protocol-name substring, e.g. Tornado)")
     ap.add_argument("--memory-db", default=_DEFAULT_MEM, help="institutional memory SQLite (empty disables)")
     ap.add_argument("--out", default=None, help="default: out/{slug}/review/")
     ap.add_argument("--dup-threshold", type=float, default=0.55)

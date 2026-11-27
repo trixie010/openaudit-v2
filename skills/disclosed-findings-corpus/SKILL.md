@@ -8,7 +8,7 @@ description: Ground hypothesis generation against a searchable corpus of past di
 A Category B pipeline, same tier as pashov/trailofbits/kadenzipfel/etc. - it
 produces a report and answers kritt.md rows exactly like those do. What makes
 this one different: instead of a fixed, author-written checklist, it searches
-a growing corpus of ~46,000 real disclosed findings (Web3 Audit Corpus:
+a growing corpus of ~42,000 real disclosed findings (Web3 Audit Corpus:
 Code4rena, Sherlock, Cantina, Spearbit, Trail of Bits, OpenZeppelin, Cyfrin,
 Pashov and more) plus real exploit PoCs (DeFiHackLabs) and post-mortems (Rekt).
 
@@ -58,7 +58,7 @@ python scripts/ingest/ingest_findings.py data/web3_audit.jsonl
 
 That keeps EVM-ish High/Medium/Critical findings with usable body text, maps
 `vuln_leaf` to `bug_class`, infers `protocol_type`, and keeps the original
-report URL. Narrow it with `--firms code4rena sherlock cantina spearbit` or
+report URL; exact-content duplicates are dropped so top-k results stay distinct. Narrow it with `--firms code4rena sherlock cantina spearbit` or
 probe with `--limit 1000`. The raw snapshot is ~97 MB compressed; the SQLite
 DB with FTS is ~800 MB and lives at `data/findings.db` (gitignored). Re-run
 the two scripts after a new release to refresh. Derived metadata is CC BY 4.0;
@@ -96,8 +96,9 @@ contaminated. The corpus is for Step 5's parallel Category B pass and Step 7
 dedup, not for the blind discovery run.
 
 **Refresh:** `web3_audit.py` reads the release file and writes a filtered
-JSONL; `ingest_findings.py` appends by `finding_uid` and rebuilds the on-disk
-FTS tables (`hint_fts`, `dedup_fts`). Queries are milliseconds after that.
+JSONL; `ingest_findings.py` appends by `source_id` (the Web3 adapter maps
+`finding_uid` into it) and rebuilds the on-disk FTS tables (`hint_fts`,
+`dedup_fts`). Queries are milliseconds after that.
 
 ## Running this pipeline on a target
 
@@ -140,7 +141,8 @@ that's a different query:
 ```bash
 python scripts/retrieval/query.py "oracle spot price used for collateral, no TWAP" --dedup --protocol-name MyProtocol --top 5
 ```
-`dedup_search` is exact-match scoped to the SAME named protocol, used at
+`dedup_search` is scoped to the SAME named protocol (protocol-name substring,
+so `Tornado` matches `Tornado.Cash`/`Tornado Blast` variants), used at
 confirm/report time only, same blind-discovery-stays-blind rule as Step 7
 already follows. Don't call it during Step 5 - that's exactly the anchoring
 risk the blind rule protects against; it belongs in Step 7, alongside

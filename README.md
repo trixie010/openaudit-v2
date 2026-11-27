@@ -45,7 +45,9 @@ To run: open a session in this repo with the openaudit skill loaded and say
    Highs live. Completion gate: zero UNANSWERED rows.
 3. CATEGORY A static         -> slither detectors + semgrep + wake (uvx) [+ aderyn]
 4. CATEGORY B AI pipelines   -> pashov, kadenzipfel, forefy, quillai, auditmos, trailofbits,
-                                 archethect - ONE agent at a time; anti-bias rules; drop-log;
+                                 archethect, cyfrin, disclosed-findings-corpus - ONE agent at a
+                                 time; also run cross-cutting 8.5 and accounting-first 8.6 for
+                                 accounting-heavy targets; anti-bias rules; drop-log;
                                  coverage matrix (every function in functions.csv) AND kritt
                                  ledger (tier M cleared once, tier S answered per pipeline;
                                  role-gate refutations must clear the 3-part bypass sub-check);
@@ -64,7 +66,8 @@ To run: open a session in this repo with the openaudit skill loaded and say
                                 repo (fuzz-night.yml, 6h medusa+echidna jobs, corpus committed back)
                                 or laptop+tmux; chimera-linter pre-flight; violations -> referee
 8. STEP 7 prior audits       -> CONFIRM-TIME ONLY (discovery stays blind): docs + public
-                                 reports saved to out/{slug}/prior-audits/; feed dup_risk axis
+                                 reports saved to out/{slug}/prior-audits/; also dedup against
+                                 the local disclosed-findings corpus; feed dup_risk axis
 9. STEP 8 summary            -> dedup (fix-equivalence where feasible), ranker-ordered, per-finding
                                  confirm axes (program_minimum / evidence_boundary / submission
                                  advice / dup_risk), status ladder (suspected->confirmed-executable

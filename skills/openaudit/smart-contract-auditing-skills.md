@@ -2,6 +2,11 @@
 
 Dated 2026-03-01.
 
+**Local additions not in the table:** `skills/disclosed-findings-corpus/` (retrieval-grounded
+Category B; ~42k H/M/C findings), `skills/vigilo_poc/`, `skills/vigilo_report/`, and
+`skills/target-intel/`. They are not `deps/` submodules; follow their `SKILL.md` directly and
+use the paths in `audit-pipeline-reference.md`.
+
 ## Summary table
 
 | Repo                                                                                                                       | Stars |          Skills |  Lines | Languages                                                                            | Contributors                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Twitter                                         |

@@ -80,7 +80,20 @@ ls publications/reviews/ | grep -i "<project name>"
 
 ### 2. Search Aggregator Platforms
 
-**Solodit (best single source):**
+**Local Web3 Audit Corpus (offline, preferred first pass):** the repo ships a
+`disclosed-findings-corpus` index of ~42k High/Medium/Critical findings from
+C4, Sherlock, Cantina, Spearbit and firm reports. Query it by protocol name
+before going to the web:
+
+```bash
+cd skills/disclosed-findings-corpus
+python scripts/retrieval/query.py "oracle spot price used for collateral" --dedup --protocol-name "<project>" --top 5
+```
+
+It returns the original report URL for each hit. Build/refresh it per that
+skill's `SKILL.md` Setup (no API key; ~97 MB download, ~800 MB SQLite).
+
+**Solodit (web UI; may be rate-limited/unavailable):**
 
 1. Go to [solodit.cyfrin.io](https://solodit.cyfrin.io/)
 2. Search by protocol name, vulnerability type, or keyword

@@ -6,8 +6,10 @@ rights. Keep the original URL with every row and cite it when a hint is used.
 
 The release file is one JSON object per finding. This adapter filters to EVM-ish
 High/Medium/Critical findings with usable body text and maps the corpus fields
-to the fields the FTS index understands. It does not call an LLM and does not
-invent root-cause/pattern text: `pattern` is the title, `root_cause` is a body
+to the fields the FTS index understands. It drops exact-content duplicates
+(same source/project/title/severity/body) so top-k queries are not filled by
+the same finding twice. It does not call an LLM and does not invent
+root-cause/pattern text: `pattern` is the title, `root_cause` is a body
 excerpt, and the full body is kept for retrieval.
 
 Usage:
@@ -18,6 +20,7 @@ Usage:
 
 import argparse
 import gzip
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -155,6 +158,8 @@ def main():
     ap.add_argument("--limit", type=int, default=0, help="stop after N kept rows (0 = no limit)")
     ap.add_argument("--no-chain-filter", action="store_true", help="keep explicitly non-EVM chains too")
     ap.add_argument("--no-language-filter", action="store_true", help="keep non-EVM languages too")
+    ap.add_argument("--keep-duplicates", action="store_true",
+                    help="keep rows with identical source/project/title/severity/body")
     args = ap.parse_args()
     args.severity = {s.lower() for s in args.severity}
     args.firms = {f.lower() for f in args.firms}
@@ -165,7 +170,8 @@ def main():
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    counts = {"scanned": 0, "kept": 0}
+    counts = {"scanned": 0, "kept": 0, "duplicates": 0}
+    seen = set()
     opener = gzip.open if src.suffix == ".gz" else open
     with opener(src, "rt", encoding="utf-8") as fh, out.open("w", encoding="utf-8") as dst:
         for line in fh:
@@ -179,12 +185,22 @@ def main():
             rec = _record(raw, args)
             if rec is None:
                 continue
+            if not args.keep_duplicates:
+                key = hashlib.sha1("\0".join((
+                    rec["source"], rec["protocol_name"], rec["title"],
+                    rec["severity"], rec["body_text"],
+                )).encode("utf-8")).digest()
+                if key in seen:
+                    counts["duplicates"] += 1
+                    continue
+                seen.add(key)
             dst.write(json.dumps(rec, ensure_ascii=False) + "\n")
             counts["kept"] += 1
             if args.limit and counts["kept"] >= args.limit:
                 break
 
-    print(f"scanned={counts['scanned']} kept={counts['kept']} out={out}")
+    print(f"scanned={counts['scanned']} kept={counts['kept']} "
+          f"duplicates={counts['duplicates']} out={out}")
 
 
 if __name__ == "__main__":

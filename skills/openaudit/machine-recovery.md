@@ -30,6 +30,11 @@ For the "laptop died" scenario. Order matters.
 - ChainScope venv: `cd deps/chainscope && uv venv .venv && uv pip install -r requirements.txt
   -p .venv/bin/python && uv pip install -p .venv/bin/python "mcp[cli]<2"` (mcp<2 pin is REQUIRED)
 - runes (optional, Category C violation conversion): github.com/Enigma-Dark/runes
+- Web3 Audit Corpus + FTS DB (gitignored, ~97 MB download / ~700 MB DB):
+  rebuild per `skills/disclosed-findings-corpus/SKILL.md` Setup:
+  `python scripts/ingest/sources/web3_audit.py && python scripts/ingest/ingest_findings.py data/web3_audit.jsonl`
+  (run from `skills/disclosed-findings-corpus/`; no API key). The corpus powers Step 5's
+  retrieval pass and Step 7 dedup.
 - git identity (if anonymity wanted): `git config user.name X; git config user.email Y`
 
 ## 4. fuzz-lab (public repo, separate)
