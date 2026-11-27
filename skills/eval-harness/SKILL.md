@@ -155,6 +155,32 @@ process (`--with-mcp` keeps it). The agent must keep `read` allowed: denying it 
 
 If the judge fails, the pair stays unmatched (deterministic result is the floor).
 
+## Corpus A/B probe (prep, run after the blind candidates exist)
+
+The corpus contains many past C4/Sherlock contests, including these eval targets. Do **not**
+query it during discovery for an eval run. After `candidates.csv` is written, this probe
+measures whether the corpus would have been useful and confirms the exclusions are working:
+
+```bash
+# default excludes the contest's title + slug (zero-leakage probe)
+python skills/eval-harness/scripts/corpus_probe.py 2024-06-vultisig \
+  --workdir ~/openaudit/eval-runs/2024-06-vultisig
+
+# leakage baseline: intentionally leave the target's own rows in
+python skills/eval-harness/scripts/corpus_probe.py 2024-06-vultisig \
+  --workdir ~/openaudit/eval-runs/2024-06-vultisig --no-meta-excludes
+```
+
+It writes `<workdir>/corpus_probe.md` + `.json`:
+
+- `gt_with_hits` / `gt_total` = retrieval ceiling, **not** recall. Read the markdown and judge
+  whether a hint is actually relevant to the answer-key finding.
+- `leakage_without_exclusions` must be `>0` for a contest that is in the corpus, proving the
+  check is live; the excluded run must report zero same-contest hits.
+- The real A/B is still a full blind replay with and without `disclosed-findings-corpus` in the
+  pipeline roster, scored with `evalctl.py`. Compare recall (all + High), read-confirmed
+  precision, and duplicate count. Do not tune on one contest.
+
 ## Blindness (critical)
 
 The answer key must not reach the auditing agent, or the score is meaningless.

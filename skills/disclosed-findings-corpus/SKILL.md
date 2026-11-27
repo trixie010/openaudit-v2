@@ -90,10 +90,17 @@ everything, and re-run as you classify more over time; `ingest_findings.py`
 is append-only, so partial batches accumulate.
 
 **Blind-eval note:** when replaying a contest, do not query this corpus for
-that contest/firm during discovery. Exclude it (`--firms` on ingest, or a
-separate DB) until `candidates.csv` is written, otherwise recall is
-contaminated. The corpus is for Step 5's parallel Category B pass and Step 7
-dedup, not for the blind discovery run.
+that contest/firm during discovery. The corpus contains many C4/Sherlock
+contests, so use the repeatable exclusions on `query.py` (and on the index
+constructor for scripts) until `candidates.csv` is written:
+
+```bash
+python scripts/retrieval/query.py "share inflation" --exclude-protocol Vultisig --exclude-url 2024-06-vultisig
+```
+
+`--firms` on ingest is too coarse for a replay (it drops the whole firm);
+prefer target/project + contest-slug exclusion. The corpus is for Step 5's
+parallel Category B pass and Step 7 dedup, not for the blind discovery run.
 
 **Refresh:** `web3_audit.py` reads the release file and writes a filtered
 JSONL; `ingest_findings.py` appends by `source_id` (the Web3 adapter maps

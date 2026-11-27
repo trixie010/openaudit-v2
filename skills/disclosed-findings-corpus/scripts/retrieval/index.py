@@ -28,6 +28,15 @@ DB_PATH = Path(__file__).parent.parent.parent / "data" / "findings.db"  # script
 _WORD = re.compile(r"[A-Za-z0-9_]+")
 
 
+def _terms(value):
+    """Normalise one-or-many exclusion substrings to a lowercase tuple."""
+    if not value:
+        return ()
+    if isinstance(value, str):
+        value = [value]
+    return tuple(str(v).strip().lower() for v in value if str(v).strip())
+
+
 @dataclass
 class Finding:
     id: int
@@ -85,8 +94,10 @@ def _fts_query(text: str) -> str:
 
 
 class FindingsIndex:
-    def __init__(self, db_path: Path = DB_PATH):
-        db_path = Path(db_path)
+    def __init__(self, db_path: Path | None = None, exclude_protocol=None, exclude_url=None):
+        db_path = Path(db_path) if db_path is not None else DB_PATH
+        self._exclude_protocol = _terms(exclude_protocol)
+        self._exclude_url = _terms(exclude_url)
         if not db_path.exists():
             raise RuntimeError(
                 f"No findings DB at {db_path}. Run ingest/ingest_findings.py first "
@@ -173,6 +184,14 @@ class FindingsIndex:
         by_id = {r[0]: self._make(r) for r in rows}
         return [by_id[i] for i in ids if i in by_id]
 
+    def _is_excluded(self, finding: Finding) -> bool:
+        pname = (finding.protocol_name or "").lower()
+        url = (finding.source_url or "").lower()
+        return (
+            any(term in pname for term in self._exclude_protocol)
+            or any(term in url for term in self._exclude_url)
+        )
+
     def _search(self, query: str, mode: str, protocol_filter: tuple[str, str] | None, top_k: int) -> list[Finding]:
         match = _fts_query(query)
         if not match:
@@ -190,15 +209,30 @@ class FindingsIndex:
                 else:
                     sql += f" AND {col} = ?"
                     params.append(value)
+        if self.backend == "fts5-disk" and (self._exclude_protocol or self._exclude_url):
+            clauses = []
+            if self._exclude_protocol and self._present.get("protocol_name"):
+                for term in self._exclude_protocol:
+                    clauses.append("lower(protocol_name) LIKE ?")
+                    params.append(f"%{term}%")
+            if self._exclude_url and self._present.get("source_url"):
+                for term in self._exclude_url:
+                    clauses.append("lower(source_url) LIKE ?")
+                    params.append(f"%{term}%")
+            if clauses:
+                sql += " AND rowid NOT IN (SELECT id FROM findings WHERE " + " OR ".join(clauses) + ")"
         sql += f" ORDER BY bm25({table}) LIMIT ?"
-        params.append(max(top_k, 1) * 4 if protocol_filter else max(top_k, 1))
+        params.append(max(top_k, 1) * 4 if (protocol_filter or self._exclude_protocol or self._exclude_url) else max(top_k, 1))
         try:
             ids = [r[0] for r in self._conn.execute(sql, params).fetchall()][:top_k]
         except sqlite3.OperationalError:
             return []
         if self.backend == "fts5-disk":
-            return self._load(ids)
-        return [self.findings[i] for i in ids]
+            return self._load(ids)[:top_k]
+        hits = [self.findings[i] for i in ids]
+        if self._exclude_protocol or self._exclude_url:
+            hits = [f for f in hits if not self._is_excluded(f)]
+        return hits[:top_k]
 
     def hint_search(self, query: str, protocol_type: str | None = None, top_k: int = 4) -> list[Finding]:
         pf = ("protocol_type", protocol_type) if protocol_type else None

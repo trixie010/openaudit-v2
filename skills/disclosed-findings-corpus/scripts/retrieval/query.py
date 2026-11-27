@@ -7,6 +7,11 @@ Hint search (discovery, one Category B pipeline's angle - pattern grounding):
 Dedup search (confirm-time ONLY, protocol-name substring scope):
   python scripts/retrieval/query.py "cross-chain message replay" --dedup --protocol-name MyProto --top 5
 
+Blind-eval guard (repeatable): drop the target's own corpus rows so an A/B replay is not
+contaminated:
+  python scripts/retrieval/query.py "share inflation" --exclude-protocol Vultisig \
+      --exclude-url 2024-06-vultisig
+
 Zero third-party deps: retrieval is SQLite FTS5 from the stdlib.
 """
 import argparse
@@ -26,9 +31,18 @@ def main() -> None:
     ap.add_argument("--dedup", action="store_true", help="use dedup_search (confirm-time) instead of hint_search")
     ap.add_argument("--top", type=int, default=3)
     ap.add_argument("--db", default=None, help="path to findings.db (default: skill data/findings.db)")
+    ap.add_argument("--exclude-protocol", action="append", default=[], metavar="SUBSTRING",
+                    help="drop rows whose protocol_name contains this (repeatable; for blind eval)")
+    ap.add_argument("--exclude-url", action="append", default=[], metavar="SUBSTRING",
+                    help="drop rows whose source_url contains this (repeatable; for blind eval)")
     args = ap.parse_args()
 
-    idx = FindingsIndex(Path(args.db)) if args.db else FindingsIndex()
+    db_path = Path(args.db) if args.db else None
+    idx = FindingsIndex(
+        db_path,
+        exclude_protocol=args.exclude_protocol,
+        exclude_url=args.exclude_url,
+    )
     if args.dedup:
         hits = idx.dedup_search(args.query, protocol_name=args.protocol_name, top_k=args.top)
         for h in hits:
